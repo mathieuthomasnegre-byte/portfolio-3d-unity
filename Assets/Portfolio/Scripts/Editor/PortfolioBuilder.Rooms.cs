@@ -43,13 +43,10 @@ namespace Portfolio.EditorTools
             Cyl(t, "Tringle", new Vector3(1.6f, 3.2f, 3.08f), 0.02f, 3.9f, Mat("metal_dark", "#3A3F47", 0.6f, 0.7f), new Vector3(0f, 0f, 90f), 12);
 
             // Tapis et table de jeu
-            Cyl(t, "Tapis", new Vector3(0.7f, 0f, -0.6f), 2.05f, 0.022f, Mat("r1_rug", "#C59688", 0.05f), null, 48);
-            Cyl(t, "Tapis centre", new Vector3(0.7f, 0f, -0.6f), 1.6f, 0.028f, Mat("r1_rug_light", "#D8B9AA", 0.05f), null, 48);
+            ModelFit(t, "Tapis", "rugRound", new Vector3(0.7f, 0f, -0.6f), 0f, new Vector3(4.1f, 0.03f, 4.1f),
+                ("carpet", Mat("r1_rug_light", "#D8B9AA", 0.05f)), ("carpetDarker", Mat("r1_rug", "#C59688", 0.05f)));
             Transform table = Group(t, "Table de jeu", new Vector3(0.7f, 0f, -0.6f)).transform;
-            Box(table, "Plateau", new Vector3(0f, 0.42f, 0f), new Vector3(2.1f, 0.08f, 1.5f), woodLight, 0.025f);
-            foreach (float x in new[] { -0.92f, 0.92f })
-                foreach (float z in new[] { -0.62f, 0.62f })
-                    Box(table, "Pied", new Vector3(x, 0.19f, z), new Vector3(0.09f, 0.38f, 0.09f), wood, 0.015f);
+            ModelFit(table, "Table basse", "tableCoffee", Vector3.zero, 0f, new Vector3(2.1f, 0.46f, 1.5f), ("wood", woodLight));
 
             // Le vaisseau, monté en cinq étapes
             GameObject ship = BuildShip(t, new Vector3(0.7f, 0.46f, -0.6f), 140f, 1f, out GameObject[] stages, out GameObject glow);
@@ -212,16 +209,16 @@ namespace Portfolio.EditorTools
             Shafts(t, "r2", wx0, wx1, wy0, wy1, room.sunDirection, "#A9BDE8", 0.09f);
             PointLight(t, "Lumière d'ambiance", new Vector3(1.2f, 2.9f, -0.8f), "#8798C0", 3.6f, 9f);
 
-            Box(t, "Tapis", new Vector3(0.2f, 0.012f, -0.7f), new Vector3(3.9f, 0.024f, 2.6f), Mat("r2_rug", "#3C4352", 0.05f), 0.01f);
-            Box(t, "Tapis centre", new Vector3(0.2f, 0.014f, -0.7f), new Vector3(3.4f, 0.026f, 2.1f), Mat("r2_rug_light", "#464F61", 0.05f), 0.01f);
+            ModelFit(t, "Tapis", "rugRectangle", new Vector3(0.2f, 0f, -0.7f), 0f, new Vector3(3.9f, 0.03f, 2.6f),
+                ("carpet", Mat("r2_rug_light", "#464F61", 0.05f)), ("carpetDarker", Mat("r2_rug", "#3C4352", 0.05f)));
 
             // Bureau et trois écrans
             Transform desk = Group(t, "Bureau", Vector3.zero).transform;
             const float deskTop = 0.765f;
-            Box(desk, "Plateau", new Vector3(-0.8f, 0.74f, 2.72f), new Vector3(3.7f, 0.05f, 0.8f), deskWood, 0.015f);
-            Box(desk, "Côté gauche", new Vector3(-2.6f, 0.36f, 2.72f), new Vector3(0.05f, 0.72f, 0.76f), deskWood, 0.012f);
-            Box(desk, "Côté droit", new Vector3(1f, 0.36f, 2.72f), new Vector3(0.05f, 0.72f, 0.76f), deskWood, 0.012f);
-            Box(desk, "Fond", new Vector3(-0.8f, 0.45f, 3.08f), new Vector3(3.6f, 0.5f, 0.03f), deskWood, 0.01f);
+            ModelFit(desk, "Bureau gauche", "desk", new Vector3(-1.725f, 0f, 2.72f), 0f, new Vector3(1.85f, deskTop, 0.8f),
+                ("wood", deskWood), ("metal", furniture));
+            ModelFit(desk, "Bureau droit", "desk", new Vector3(0.125f, 0f, 2.72f), 0f, new Vector3(1.85f, deskTop, 0.8f),
+                ("wood", deskWood), ("metal", furniture));
             Box(desk, "Tapis de souris", new Vector3(-0.75f, 0.768f, 2.5f), new Vector3(1.15f, 0.006f, 0.42f), Mat("mousepad", "#262A30", 0.2f), 0.003f);
             Model(desk, "Clavier", "computerKeyboard", new Vector3(-0.85f, 0.771f, 2.5f), 0f, 0.62f,
                 ("metalDark", dark), ("metalMedium", Mat("key_glow", "#3A3F47", 0.3f, 0f, "#9C8FD6", 0.7f)));
@@ -359,8 +356,8 @@ namespace Portfolio.EditorTools
             PointLight(t, "Lumière d'ambiance", new Vector3(1.2f, 2.9f, -1f), "#FFEAD2", 3.2f, 9f);
             PointLight(t, "Rebond du soleil", new Vector3(2.4f, 1.1f, -0.4f), "#F0CBA0", 1.1f, 5f);
 
-            Box(t, "Tapis", new Vector3(0.4f, 0.012f, -0.6f), new Vector3(4.1f, 0.024f, 2.7f), Mat("r3_rug", "#D8CFBE", 0.05f), 0.01f);
-            Box(t, "Tapis bande", new Vector3(0.4f, 0.014f, -0.6f), new Vector3(3.6f, 0.026f, 0.5f), Mat("r3_rug_stripe", "#B9A98C", 0.05f), 0.01f);
+            ModelFit(t, "Tapis", "rugRectangle", new Vector3(0.4f, 0f, -0.6f), 0f, new Vector3(4.1f, 0.03f, 2.7f),
+                ("carpet", Mat("r3_rug", "#D8CFBE", 0.05f)), ("carpetDarker", Mat("r3_rug_stripe", "#B9A98C", 0.05f)));
 
             // Lit et chevet
             Bed(t, oak, Mat("mattress", "#EDE9E0", 0.1f), sage, Mat("pillow", "#F3F0EA", 0.1f));
@@ -369,10 +366,12 @@ namespace Portfolio.EditorTools
             // Bureau
             Transform desk = Group(t, "Bureau", Vector3.zero).transform;
             const float deskTop = 0.765f;
-            Box(desk, "Plateau", new Vector3(-0.95f, 0.74f, 2.72f), new Vector3(2.7f, 0.05f, 0.8f), oak, 0.015f);
-            foreach (float x in new[] { -2.24f, 0.34f })
-                foreach (float z in new[] { 2.38f, 3.06f })
-                    Box(desk, "Pied", new Vector3(x, 0.36f, z), new Vector3(0.04f, 0.72f, 0.04f), metal, 0.008f);
+            ModelFit(desk, "Table de travail", "table", new Vector3(-0.95f, 0f, 2.72f), 0f, new Vector3(2.7f, deskTop, 0.8f),
+                ("wood", oak));
+            Model(desk, "Plante de bureau", "plantSmall3", new Vector3(0.18f, deskTop, 2.98f), 0f, 0.3f,
+                ("wood", Mat("pot", "#B58A6C", 0.25f)), ("plant", Mat("leaf", "#6C8C70", 0.3f)));
+            Model(t, "Corbeille", "trashcan", new Vector3(0.75f, 0f, 2.85f), 0f, 0.42f, ("metal", metal), ("metalDark", dark));
+            Model(t, "Portemanteau", "coatRackStanding", new Vector3(3.6f, 0f, 0.1f), 0f, 1.8f, ("wood", oak));
 
             // Ordinateur portable : tableau de bord data
             GameObject laptop = Group(desk, "Ordinateur portable", new Vector3(-1.55f, deskTop, 2.6f), new Vector3(0f, -12f, 0f));

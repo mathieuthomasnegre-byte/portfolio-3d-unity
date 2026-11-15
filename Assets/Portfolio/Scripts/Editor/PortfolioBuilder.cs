@@ -21,6 +21,7 @@ namespace Portfolio.EditorTools
         public const string Root = "Assets/Portfolio";
         public const string Generated = Root + "/Generated";
         public const string ScenePath = Root + "/Scenes/Portfolio.unity";
+        public const string KitFolder = "Assets/Kenney Furniture Kit";
 
         const float Stud = 0.08f;
         const float BrickHeight = 0.096f;
@@ -40,7 +41,7 @@ namespace Portfolio.EditorTools
             { "mattress", 3 }, { "pillow", 3 }, { "r2_rug", 3 }, { "r2_rug_light", 3 }, { "r2_blanket", 3 },
             { "r2_mattress", 3 }, { "r2_pillow", 3 }, { "r2_beanbag", 3 }, { "r2_chair", 3 }, { "r3_rug", 3 },
             { "r3_rug_stripe", 3 }, { "r3_sage", 3 }, { "r3_chair", 3 }, { "gym_bag", 3 }, { "cork", 3 },
-            { "kit_fabric", 3 },
+            { "kit_fabric", 3 }, { "kit_fabric_dark", 3 }, { "kit_fabric_blue", 3 },
             { "r1_wall", 4 }, { "r2_wall", 4 }, { "r3_wall", 4 }
         };
         static System.Random random;

@@ -150,13 +150,27 @@ namespace Portfolio.EditorTools
         }
 
         /// <summary>
-        /// Modèle du « Furniture Kit » de Kenney (kenney.nl, licence CC0), posé sur son point bas central.
+        /// Modèle du « Furniture Kit » de Kenney (kenney.nl, licence CC0), importé depuis le paquet Unity du kit
+        /// dans « Assets/Kenney Furniture Kit ». Il est posé sur son point bas central.
         /// size : plus grande dimension voulue, en mètres. palette : matériau du kit → matériau de la chambre.
         /// </summary>
         static GameObject Model(Transform parent, string name, string file, Vector3 position, float yaw, float size,
             params (string slot, Material material)[] palette)
         {
-            string path = $"{Root}/Models/Kenney/{file}.fbx";
+            return PlaceModel(parent, name, file, position, yaw, Vector3.one * size, true, palette);
+        }
+
+        /// <summary>Même modèle, étiré pour occuper exactement largeur × hauteur × profondeur (bureaux, tapis, tables).</summary>
+        static GameObject ModelFit(Transform parent, string name, string file, Vector3 position, float yaw, Vector3 size,
+            params (string slot, Material material)[] palette)
+        {
+            return PlaceModel(parent, name, file, position, yaw, size, false, palette);
+        }
+
+        static GameObject PlaceModel(Transform parent, string name, string file, Vector3 position, float yaw, Vector3 size,
+            bool uniform, (string slot, Material material)[] palette)
+        {
+            string path = $"{KitFolder}/{file}.fbx";
             GameObject asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (!asset) throw new System.InvalidOperationException("Modèle introuvable : " + path);
 
@@ -168,11 +182,20 @@ namespace Portfolio.EditorTools
             Renderer[] renderers = model.GetComponentsInChildren<Renderer>();
             Bounds bounds = renderers[0].bounds;
             foreach (Renderer r in renderers) bounds.Encapsulate(r.bounds);
-            float scale = size / Mathf.Max(bounds.size.x, Mathf.Max(bounds.size.y, bounds.size.z));
 
-            model.transform.SetParent(holder.transform, false);
-            model.transform.localScale *= scale;
-            model.transform.localPosition = -new Vector3(bounds.center.x, bounds.min.y, bounds.center.z) * scale;
+            Vector3 scale;
+            if (uniform)
+                scale = Vector3.one * (size.x / Mathf.Max(bounds.size.x, Mathf.Max(bounds.size.y, bounds.size.z)));
+            else
+                scale = new Vector3(size.x / Mathf.Max(bounds.size.x, 0.0001f), size.y / Mathf.Max(bounds.size.y, 0.0001f),
+                    size.z / Mathf.Max(bounds.size.z, 0.0001f));
+
+            // L'échelle est portée par un parent aligné sur les axes de la chambre : le modèle peut garder
+            // la rotation que lui donne l'import sans être déformé de travers.
+            GameObject fit = Group(holder.transform, "Échelle", Vector3.zero);
+            fit.transform.localScale = scale;
+            model.transform.SetParent(fit.transform, false);
+            model.transform.localPosition = -new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
 
             foreach (Renderer r in renderers)
             {
@@ -197,6 +220,9 @@ namespace Portfolio.EditorTools
                 case "metalDark": return Mat("metal_dark", "#3A3F47", 0.6f, 0.7f);
                 case "carpet": return Mat("kit_fabric", "#8A8378", 0.1f);
                 case "carpetWhite": return Mat("mattress", "#EDE9E0", 0.1f);
+                case "carpetDarker": return Mat("kit_fabric_dark", "#6E685F", 0.1f);
+                case "carpetBlue": return Mat("kit_fabric_blue", "#6F8AA0", 0.1f);
+                case "_defaultMat": return Mat("kit_default", "#D9D6D0", 0.2f);
                 case "plant": return Mat("leaf", "#6C8C70", 0.3f);
                 case "fur": return Mat("kit_fur", "#B08D6E", 0.05f);
                 case "lamp": return Mat("shade_cream", "#EDE3D0", 0.2f, 0f, "#FFD9A8", 0.6f);
