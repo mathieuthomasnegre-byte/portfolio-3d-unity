@@ -29,7 +29,7 @@ namespace Portfolio.EditorTools
                 woodLight = Mat("r1_wood_light", "#D9C7A7", 0.3f);
             const float wx0 = -1.7f, wx1 = 1f, wy0 = 1.25f, wy1 = 3.05f;
             Shell(t, wall, floor, trim, wx0, wx1, wy0, wy1);
-            Sky(t, "r1_sky", wx0, wx1, wy0, wy1, "#8FB4D4", "#F0DDBE", "#FFF2D0", 3f, new Vector2(0.4f, 0.62f), 0.05f, 0f, 1.5f);
+            Sky(t, "r1_sky", wx0, wx1, wy0, wy1, "#8FB4D4", "#F0DDBE", "#FFF2D0", 2f, new Vector2(0.4f, 0.62f), 0.05f, 0f, 1.05f);
             Shafts(t, "r1", wx0, wx1, wy0, wy1, room.sunDirection, "#FFE3B0", 0.2f);
             Dust(t, "r1", new Vector3(-0.2f, 1.4f, 1.1f), new Vector3(3.2f, 2.4f, 3.2f), "#FFE9C4");
             PointLight(t, "Lumière d'ambiance", new Vector3(1.2f, 2.8f, -1f), "#FFE8CC", 3.5f, 9f);
@@ -78,7 +78,7 @@ namespace Portfolio.EditorTools
 
             // Lit, chevet, coffre
             Bed(t, wood, Mat("mattress", "#EDE9E0", 0.1f), Mat("r1_blanket", "#D0B26C", 0.08f), Mat("pillow", "#F3F0EA", 0.1f));
-            Bedside(t, woodLight, "#FFD9A0", 1.5f, "#FFD2A0", 2.6f);
+            Bedside(t, woodLight, "#FFD9A0", 0.6f, "#FFD2A0", 1.8f);
             Box(t, "Coffre à jouets", new Vector3(-3.35f, 0.24f, 0.55f), new Vector3(1f, 0.48f, 0.62f), Mat("r1_chest", "#8DA5B3", 0.25f), 0.04f);
             Box(t, "Couvercle du coffre", new Vector3(-3.35f, 0.5f, 0.55f), new Vector3(1.03f, 0.05f, 0.65f), Mat("r1_chest_lid", "#7B93A1", 0.25f), 0.02f);
             Transform tower = Group(t, "Tour en briques", new Vector3(-3.4f, 0.525f, 0.55f), new Vector3(0f, 30f, 0f)).transform;
@@ -109,7 +109,7 @@ namespace Portfolio.EditorTools
             Material gold = Mat("gold", "#C9A85C", 0.7f, 0.85f), silver = Mat("steel", "#B4B9BF", 0.7f, 0.85f),
                 bronze = Mat("bronze", "#B07F5A", 0.65f, 0.8f);
             Box(s, "Étagère natation", new Vector3(-3.84f, 1.55f, -0.5f), new Vector3(0.3f, 0.05f, 1.35f), woodLight, 0.012f);
-            Ball(s, "Bonnet de bain", new Vector3(-3.84f, 1.675f, -0.95f), new Vector3(0.24f, 0.2f, 0.28f), Mat("swim_cap", "#5F86A8", 0.65f));
+            Ball(s, "Bonnet de bain", new Vector3(-3.84f, 1.645f, -0.95f), new Vector3(0.2f, 0.14f, 0.23f), Mat("swim_cap", "#5F86A8", 0.65f));
             Material lens = Mat("goggles", "#3E4955", 0.8f);
             Cyl(s, "Lunette gauche", new Vector3(-3.86f, 1.62f, -0.46f), 0.045f, 0.035f, lens, new Vector3(0f, 0f, -90f), 16);
             Cyl(s, "Lunette droite", new Vector3(-3.86f, 1.62f, -0.34f), 0.045f, 0.035f, lens, new Vector3(0f, 0f, -90f), 16);
@@ -128,8 +128,8 @@ namespace Portfolio.EditorTools
 
             // Ballons
             GameObject balls = Group(t, "Ballons", Vector3.zero);
-            Ball(balls.transform, "Ballon de football", new Vector3(-2.75f, 0.2f, -1.95f), Vector3.one * 0.4f, Mat("football", "#E8E5DE", 0.35f));
-            GameObject rugby = Ball(balls.transform, "Ballon de rugby", new Vector3(-3.2f, 0.15f, -1.2f), new Vector3(0.3f, 0.3f, 0.48f), Mat("rugby_ball", "#A8765C", 0.3f));
+            Ball(balls.transform, "Ballon de football", new Vector3(-2.75f, 0.14f, -1.95f), Vector3.one * 0.28f, Mat("football", "#E8E5DE", 0.35f));
+            GameObject rugby = Ball(balls.transform, "Ballon de rugby", new Vector3(-3.2f, 0.11f, -1.2f), new Vector3(0.22f, 0.22f, 0.36f), Mat("rugby_ball", "#A8765C", 0.3f));
             rugby.transform.localEulerAngles = new Vector3(0f, 35f, 0f);
             Ball(balls.transform, "Balle de tennis", new Vector3(-2.3f, 0.045f, -2.35f), Vector3.one * 0.09f, Mat("tennis_ball", "#C5CC7E", 0.15f));
 
@@ -194,9 +194,9 @@ namespace Portfolio.EditorTools
             room.sunDirection = new Vector3(-0.25f, -0.8f, -0.55f);
             room.sunColor = Hex("#A3B4D8");
             room.sunIntensity = 0.5f;
-            room.ambientSky = Hex("#39425A");
-            room.ambientEquator = Hex("#33374A");
-            room.ambientGround = Hex("#25262F");
+            room.ambientSky = Hex("#4A5470");
+            room.ambientEquator = Hex("#42475C");
+            room.ambientGround = Hex("#2E303A");
             room.backgroundColor = Hex("#20232B");
 
             Material wall = Mat("r2_wall", "#5A6370", 0.1f), floor = Mat("r2_floor", "#7B6B5D", 0.3f),
@@ -206,7 +206,7 @@ namespace Portfolio.EditorTools
             Shell(t, wall, floor, trim, wx0, wx1, wy0, wy1);
             Sky(t, "r2_sky", wx0, wx1, wy0, wy1, "#141B2C", "#2E3856", "#E8EEFF", 2.2f, new Vector2(0.6f, 0.66f), 0.04f, 0.9f, 1f);
             Shafts(t, "r2", wx0, wx1, wy0, wy1, room.sunDirection, "#A9BDE8", 0.09f);
-            PointLight(t, "Lumière d'ambiance", new Vector3(1.2f, 2.9f, -0.8f), "#8798C0", 2.6f, 9f);
+            PointLight(t, "Lumière d'ambiance", new Vector3(1.2f, 2.9f, -0.8f), "#8798C0", 3.6f, 9f);
 
             Box(t, "Tapis", new Vector3(0.2f, 0.012f, -0.7f), new Vector3(3.9f, 0.024f, 2.6f), Mat("r2_rug", "#3C4352", 0.05f), 0.01f);
             Box(t, "Tapis centre", new Vector3(0.2f, 0.014f, -0.7f), new Vector3(3.4f, 0.026f, 2.1f), Mat("r2_rug_light", "#464F61", 0.05f), 0.01f);
@@ -239,11 +239,11 @@ namespace Portfolio.EditorTools
             Box(pad, "Poignée droite", new Vector3(0.065f, -0.006f, -0.05f), new Vector3(0.048f, 0.036f, 0.09f), furniture, 0.016f);
             Cyl(pad, "Stick gauche", new Vector3(-0.045f, 0.018f, 0.01f), 0.013f, 0.012f, dark, null, 12);
             Cyl(pad, "Stick droit", new Vector3(0.03f, 0.018f, -0.015f), 0.013f, 0.012f, dark, null, 12);
-            Box(pad, "Boutons", new Vector3(0.055f, 0.02f, 0.015f), new Vector3(0.03f, 0.006f, 0.03f), Mat("px_amber", "#D2A862", 0.3f, 0f, "#D2A862", 0.9f), 0.003f);
+            Box(pad, "Boutons", new Vector3(0.055f, 0.02f, 0.015f), new Vector3(0.03f, 0.006f, 0.03f), Mat("px_amber", "#D2A862", 0.3f, 0f, "#D2A862", 0.45f), 0.003f);
 
             Box(t, "Tour PC", new Vector3(1.34f, 0.33f, 2.75f), new Vector3(0.26f, 0.62f, 0.6f), dark, 0.02f);
             Box(t, "LED de la tour", new Vector3(1.34f, 0.33f, 2.445f), new Vector3(0.03f, 0.5f, 0.012f), Mat("led_teal", "#6FA8A0", 0.3f, 0f, "#7FC8BC", 2.4f), 0.004f);
-            Chair(t, new Vector3(-0.7f, 0f, 1.75f), 14f, Mat("r2_chair", "#33373E", 0.2f), Mat("r2_accent", "#8A7FB5", 0.3f));
+            Chair(t, new Vector3(-0.3f, 0f, 1.3f), 25f, Mat("r2_chair", "#33373E", 0.2f), Mat("r2_accent", "#8A7FB5", 0.3f));
 
             // Étagère au-dessus des écrans, avec le vaisseau de l'enfance
             Box(t, "Étagère", new Vector3(-0.8f, 2.15f, 3.05f), new Vector3(3.7f, 0.05f, 0.28f), deskWood, 0.012f);
@@ -258,20 +258,20 @@ namespace Portfolio.EditorTools
 
             // Lit et chevet
             Bed(t, furniture, Mat("r2_mattress", "#D9D6D0", 0.1f), Mat("r2_blanket", "#454E60", 0.08f), Mat("r2_pillow", "#C9CCD2", 0.1f));
-            Bedside(t, furniture, "#F0B880", 1.2f, "#F0B880", 1.3f);
+            Bedside(t, furniture, "#F0B880", 0.5f, "#F0B880", 1.1f);
             Transform wallArt = Group(t, "Affiche", new Vector3(-3.35f, 2.35f, 3.19f)).transform;
             Box(wallArt, "Fond", Vector3.zero, new Vector3(0.85f, 1.1f, 0.02f), Mat("poster_violet", "#62587A", 0.2f), 0.004f);
             Cyl(wallArt, "Soleil", new Vector3(0f, 0.15f, -0.01f), 0.18f, 0.01f, Mat("poster_amber", "#D2A862", 0.2f), new Vector3(-90f, 0f, 0f), 32);
             Box(wallArt, "Horizon", new Vector3(0f, -0.2f, -0.012f), new Vector3(0.7f, 0.03f, 0.012f), Mat("paper", "#EFEBE2", 0.15f), 0.004f);
             Box(wallArt, "Ligne", new Vector3(0f, -0.3f, -0.012f), new Vector3(0.55f, 0.02f, 0.012f), Mat("paper", "#EFEBE2", 0.15f), 0.004f);
 
-            Ball(t, "Pouf", new Vector3(2.7f, 0.26f, 1.7f), new Vector3(0.95f, 0.56f, 0.95f), Mat("r2_beanbag", "#5B6070", 0.08f));
-            GameObject oldBall = Ball(t, "Ballon de rugby", new Vector3(3.3f, 0.15f, 0.6f), new Vector3(0.3f, 0.3f, 0.48f), Mat("rugby_ball", "#A8765C", 0.3f));
+            Ball(t, "Pouf", new Vector3(2.7f, 0.22f, 1.7f), new Vector3(0.8f, 0.48f, 0.8f), Mat("r2_beanbag", "#5B6070", 0.08f));
+            GameObject oldBall = Ball(t, "Ballon de rugby", new Vector3(3.3f, 0.11f, 0.6f), new Vector3(0.22f, 0.22f, 0.36f), Mat("rugby_ball", "#A8765C", 0.3f));
             oldBall.transform.localEulerAngles = new Vector3(0f, -40f, 0f);
 
             // NFT
             GameObject nft = PixelFrame(t, new Vector3(-3.975f, 2.45f, -0.45f), -90f);
-            Light nftLight = SpotAt(t, "Projecteur du cadre", new Vector3(-2.5f, 3.5f, -0.45f), new Vector3(-3.97f, 2.45f, -0.45f), "#E8E2F4", 14f, 4f, 48f);
+            Light nftLight = SpotAt(t, "Projecteur du cadre", new Vector3(-2.5f, 3.5f, -0.45f), new Vector3(-3.97f, 2.45f, -0.45f), "#E8E2F4", 5f, 4f, 48f);
 
             // Sport et détails
             GameObject sport = Group(t, "Sport et détails", Vector3.zero);
@@ -344,8 +344,8 @@ namespace Portfolio.EditorTools
                 sage = Mat("r3_sage", "#6E8A78", 0.08f);
             const float wx0 = 0.95f, wx1 = 3.45f, wy0 = 1f, wy1 = 3.2f;
             Shell(t, wall, floor, trim, wx0, wx1, wy0, wy1);
-            Sky(t, "r3_sky", wx0, wx1, wy0, wy1, "#9DB3CC", "#F5CFA0", "#FFE9C0", 3f, new Vector2(0.34f, 0.4f), 0.055f, 0f, 1.5f);
-            Shafts(t, "r3", wx0, wx1, wy0, wy1, room.sunDirection, "#FFD9A8", 0.22f);
+            Sky(t, "r3_sky", wx0, wx1, wy0, wy1, "#9DB3CC", "#F5CFA0", "#FFE9C0", 2f, new Vector2(0.34f, 0.4f), 0.055f, 0f, 1.1f);
+            Shafts(t, "r3", wx0, wx1, wy0, wy1, room.sunDirection, "#FFD9A8", 0.14f);
             Dust(t, "r3", new Vector3(2f, 1.3f, 0.6f), new Vector3(3.4f, 2.4f, 3.6f), "#FFE2B8");
             PointLight(t, "Lumière d'ambiance", new Vector3(1.2f, 2.9f, -1f), "#FFEAD2", 3.2f, 9f);
 
@@ -354,7 +354,7 @@ namespace Portfolio.EditorTools
 
             // Lit et chevet
             Bed(t, oak, Mat("mattress", "#EDE9E0", 0.1f), sage, Mat("pillow", "#F3F0EA", 0.1f));
-            Bedside(t, oak, "#FFD9A8", 1.3f, "#FFD9A8", 1.6f);
+            Bedside(t, oak, "#FFD9A8", 0.6f, "#FFD9A8", 1.3f);
 
             // Bureau
             Transform desk = Group(t, "Bureau", Vector3.zero).transform;
@@ -399,7 +399,7 @@ namespace Portfolio.EditorTools
             Box(desk, "Carnet", new Vector3(-0.85f, deskTop + 0.012f, 2.44f), new Vector3(0.22f, 0.024f, 0.3f), sage, 0.006f, new Vector3(0f, -14f, 0f));
             Cyl(desk, "Stylo", new Vector3(-0.7f, deskTop + 0.008f, 2.36f), 0.006f, 0.15f, brass, new Vector3(90f, 30f, 0f), 8);
             Cyl(desk, "Tasse", new Vector3(-2.08f, deskTop, 2.5f), 0.045f, 0.09f, paper, null, 20);
-            Chair(t, new Vector3(-1.2f, 0f, 1.8f), -10f, Mat("r3_chair", "#8A8378", 0.15f), oak);
+            Chair(t, new Vector3(-0.4f, 0f, 1.2f), 20f, Mat("r3_chair", "#8A8378", 0.15f), oak);
 
             // Tableau d'affichage
             Transform board = Group(t, "Tableau d'affichage", new Vector3(-0.95f, 2.25f, 3.185f)).transform;
@@ -482,14 +482,14 @@ namespace Portfolio.EditorTools
             Transform floorLamp = Group(t, "Lampadaire", new Vector3(-3.45f, 0f, -2.7f)).transform;
             Cyl(floorLamp, "Socle", Vector3.zero, 0.17f, 0.03f, brass, null, 24);
             Cyl(floorLamp, "Mât", new Vector3(0f, 0.03f, 0f), 0.015f, 1.6f, brass, null, 12);
-            Cyl(floorLamp, "Abat-jour", new Vector3(0f, 1.6f, 0f), 0.2f, 0.26f, Mat("shade_cream", "#EDE3D0", 0.2f, 0f, "#FFD9A8", 1.3f), null, 28);
+            Cyl(floorLamp, "Abat-jour", new Vector3(0f, 1.6f, 0f), 0.2f, 0.26f, Mat("shade_cream", "#EDE3D0", 0.2f, 0f, "#FFD9A8", 0.6f), null, 28);
             PointLight(floorLamp, "Lumière du lampadaire", new Vector3(0.25f, 1.55f, 0.25f), "#FFD9A8", 2.6f, 4.5f);
 
             Plant(t, new Vector3(3.45f, 0f, 2.45f), 1f);
-            Box(t, "Sac de sport", new Vector3(2.9f, 0.19f, -2.35f), new Vector3(0.75f, 0.36f, 0.36f), Mat("gym_bag", "#3F4756", 0.15f), 0.11f, new Vector3(0f, 20f, 0f));
-            Box(t, "Sangle du sac", new Vector3(2.9f, 0.38f, -2.35f), new Vector3(0.4f, 0.03f, 0.06f), metal, 0.012f, new Vector3(0f, 20f, 0f));
-            Racket(t, new Vector3(3.55f, 0f, -1.95f), new Vector3(8f, 60f, 0f));
-            Dumbbell(t, new Vector3(2.3f, 0f, -2.75f), 35f);
+            Box(t, "Sac de sport", new Vector3(2.7f, 0.19f, -1.3f), new Vector3(0.75f, 0.36f, 0.36f), Mat("gym_bag", "#3F4756", 0.15f), 0.11f, new Vector3(0f, 20f, 0f));
+            Box(t, "Sangle du sac", new Vector3(2.7f, 0.38f, -1.3f), new Vector3(0.4f, 0.03f, 0.06f), metal, 0.012f, new Vector3(0f, 20f, 0f));
+            Racket(t, new Vector3(-3.82f, 0f, 0.68f), new Vector3(0f, 0f, 7f));
+            Dumbbell(t, new Vector3(2.15f, 0f, -1.75f), 35f);
 
             // Cadres au mur gauche
             Transform frames = Group(t, "Cadres", new Vector3(-3.985f, 2.55f, 1.9f)).transform;

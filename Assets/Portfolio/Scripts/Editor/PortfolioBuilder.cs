@@ -98,7 +98,7 @@ namespace Portfolio.EditorTools
             Volume[] volumes =
             {
                 MakeVolume(0, "Enfant", 0.1f, -8f, 14f, 6f, 0.5f, 0.22f),
-                MakeVolume(1, "Ado", 0.25f, -14f, -12f, 10f, 0.85f, 0.3f),
+                MakeVolume(1, "Ado", 0.45f, -14f, -12f, 10f, 0.85f, 0.3f),
                 MakeVolume(2, "Jeune adulte", 0.15f, -6f, 8f, 4f, 0.45f, 0.2f)
             };
 

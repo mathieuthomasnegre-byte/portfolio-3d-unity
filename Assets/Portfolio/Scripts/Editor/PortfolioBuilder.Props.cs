@@ -59,8 +59,10 @@ namespace Portfolio.EditorTools
             material.SetFloat("_Intensity", intensity);
             Register(name, material);
 
-            float w = xMax - xMin + 3.2f, h = yMax - yMin + 2.6f;
-            ScreenQuad(room, "Ciel", new Vector3((xMin + xMax) * 0.5f, (yMin + yMax) * 0.5f + 0.3f, 4.3f), w, h, material);
+            // Le ciel déborde un peu de la fenêtre mais reste caché derrière le mur du fond.
+            float x0 = Mathf.Max(xMin - 0.7f, -3.95f), x1 = Mathf.Min(xMax + 0.7f, 3.95f);
+            float y0 = Mathf.Max(yMin - 0.7f, 0.1f), y1 = Mathf.Min(yMax + 0.7f, 3.9f);
+            ScreenQuad(room, "Ciel", new Vector3((x0 + x1) * 0.5f, (y0 + y1) * 0.5f, 3.8f), x1 - x0, y1 - y0, material);
         }
 
         static void Shafts(Transform room, string name, float xMin, float xMax, float yMin, float yMax,
@@ -279,10 +281,10 @@ namespace Portfolio.EditorTools
 
             Material[] palette =
             {
-                Mat("px_teal", "#6FA8A0", 0.3f, 0f, "#6FA8A0", 0.9f),
-                Mat("px_violet", "#8F84BC", 0.3f, 0f, "#8F84BC", 0.9f),
-                Mat("px_amber", "#D2A862", 0.3f, 0f, "#D2A862", 0.9f),
-                Mat("px_white", "#DAD6CC", 0.3f, 0f, "#DAD6CC", 0.6f)
+                Mat("px_teal", "#6FA8A0", 0.3f, 0f, "#6FA8A0", 0.45f),
+                Mat("px_violet", "#8F84BC", 0.3f, 0f, "#8F84BC", 0.45f),
+                Mat("px_amber", "#D2A862", 0.3f, 0f, "#D2A862", 0.45f),
+                Mat("px_white", "#DAD6CC", 0.3f, 0f, "#DAD6CC", 0.3f)
             };
             const int grid = 8;
             const float cell = 0.1f;
