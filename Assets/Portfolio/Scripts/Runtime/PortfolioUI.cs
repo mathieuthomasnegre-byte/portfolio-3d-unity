@@ -22,14 +22,21 @@ namespace Portfolio
         [Tooltip("Lien public vers le CV en PDF. Vide : le bouton CV n'apparaît pas.")]
         public string cvUrl;
 
+        [Header("Chambres")]
+        public string[] chapterNames = { "Enfant", "Ado", "Jeune adulte" };
+
         public Action Advance;
         public Action Begin;
         public Action Restart;
 
         VisualElement root, hud, heading, card, intro, contact, dots, interlude;
         Label chapter, title, subtitle, cardStep, cardTitle, cardBody, interludeKicker, interludeTitle;
+        Label hint;
+        Label[] pips;
         Button action;
         bool built;
+
+        const string DefaultHint = "Clique sur les objets déjà découverts pour relire leur fiche";
 
         public void EnsureBuilt()
         {
@@ -49,8 +56,16 @@ namespace Portfolio
             title = Text("title", heading);
             subtitle = Text("subtitle", heading);
 
+            VisualElement chapters = Box("chapters", hud);
+            pips = new Label[chapterNames.Length];
+            for (int i = 0; i < pips.Length; i++)
+            {
+                pips[i] = Text("chapter-pip", chapters);
+                pips[i].text = $"{i + 1:00}  {chapterNames[i]}";
+            }
+
             Label signature = Text("signature", hud);
-            signature.text = ownerName;
+            signature.text = ownerName.ToUpperInvariant();
 
             card = Box("card", hud, true);
             cardStep = Text("card-step", card);
@@ -62,7 +77,8 @@ namespace Portfolio
             action = new Button(() => Advance?.Invoke());
             action.AddToClassList("action");
             footer.Add(action);
-            Text("hint", footer).text = "Clique sur les objets déjà découverts pour relire leur fiche";
+            hint = Text("hint", footer);
+            hint.text = DefaultHint;
 
             interlude = Box("interlude", hud);
             interludeKicker = Text("interlude-kicker", interlude);
@@ -89,6 +105,7 @@ namespace Portfolio
         {
             contact = Box("overlay", root, true);
             contact.AddToClassList("hidden");
+            contact.AddToClassList("overlay--out");
             VisualElement panel = Box("panel", contact, true);
             Text("kicker", panel).text = "LA SUITE";
             Text("hero", panel).text = "Construisons la suite";
@@ -103,7 +120,7 @@ namespace Portfolio
             Button again = new Button(() => Restart?.Invoke()) { text = "Revoir depuis le début" };
             again.AddToClassList("ghost");
             panel.Add(again);
-            Button close = new Button(() => contact.AddToClassList("hidden")) { text = "Retourner dans la chambre" };
+            Button close = new Button(() => FadeOut(contact)) { text = "Retourner dans la chambre" };
             close.AddToClassList("ghost");
             panel.Add(close);
         }
@@ -137,11 +154,44 @@ namespace Portfolio
 
         public void HideIntro()
         {
-            intro.AddToClassList("hidden");
+            FadeOut(intro);
             hud.RemoveFromClassList("hidden");
         }
 
-        public void ShowContact() => contact.RemoveFromClassList("hidden");
+        public void ShowContact()
+        {
+            contact.RemoveFromClassList("hidden");
+            // Une image plus tard : la transition part de l'état masqué.
+            contact.schedule.Execute(() => contact.RemoveFromClassList("overlay--out")).StartingIn(30);
+        }
+
+        /// <summary>Fondu de sortie d'un panneau plein écran, puis retrait pour libérer les clics.</summary>
+        static void FadeOut(VisualElement overlay)
+        {
+            overlay.AddToClassList("overlay--out");
+            overlay.schedule.Execute(() =>
+            {
+                if (overlay.ClassListContains("overlay--out")) overlay.AddToClassList("hidden");
+            }).StartingIn(650);
+        }
+
+        /// <summary>Met en avant la chambre en cours dans le fil des trois chambres.</summary>
+        public void SetChapterIndex(int index)
+        {
+            for (int i = 0; i < pips.Length; i++)
+            {
+                pips[i].EnableInClassList("chapter-pip--current", i == index);
+                pips[i].EnableInClassList("chapter-pip--done", i < index);
+            }
+        }
+
+        /// <summary>Texte d'aide sous le bouton ; null rétablit la consigne par défaut.</summary>
+        public void SetHint(string text)
+        {
+            bool active = !string.IsNullOrEmpty(text);
+            hint.text = active ? text : DefaultHint;
+            hint.EnableInClassList("hint--active", active);
+        }
 
         public void SetChapter(string chapterText, string titleText, string subtitleText)
         {

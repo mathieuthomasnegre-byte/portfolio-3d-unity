@@ -30,7 +30,7 @@ namespace Portfolio.EditorTools
             Box(shell, "Socle", new Vector3(0f, -0.45f, 0.1f), new Vector3(8.8f, 0.3f, 7.2f), Mat("plinth", "#2B2E33", 0.3f), 0.04f);
             Box(shell, "Mur gauche", new Vector3(-4.1f, height * 0.5f, 0.1f), new Vector3(0.2f, height, 6.6f), wall, 0.02f);
 
-            Box(shell, "Mur fond gauche", new Vector3((-4f + xMin) * 0.5f, height * 0.5f, zWall), new Vector3(xMin + 4f, height, 0.2f), wall, 0.02f);
+            Box(shell, "Mur fond gauche", new Vector3((-4.15f + xMin) * 0.5f, height * 0.5f, zWall), new Vector3(xMin + 4.15f, height, 0.2f), wall, 0.02f);
             Box(shell, "Mur fond droit", new Vector3((xMax + 4f) * 0.5f, height * 0.5f, zWall), new Vector3(4f - xMax, height, 0.2f), wall, 0.02f);
             Box(shell, "Mur sous fenêtre", new Vector3((xMin + xMax) * 0.5f, yMin * 0.5f, zWall), new Vector3(xMax - xMin, yMin, 0.2f), wall, 0.02f);
             Box(shell, "Mur sur fenêtre", new Vector3((xMin + xMax) * 0.5f, (yMax + height) * 0.5f, zWall), new Vector3(xMax - xMin, height - yMax, 0.2f), wall, 0.02f);

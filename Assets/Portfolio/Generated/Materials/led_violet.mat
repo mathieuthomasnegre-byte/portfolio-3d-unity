@@ -30,6 +30,8 @@ Material:
     - _RimPower: 3
     - _RimStrength: 0.1
     - _Smoothness: 0.3
+    - _Surface: 0
+    - _SurfaceStrength: 1
     m_Colors:
     - _BaseColor: {r: 0.56078434, g: 0.5176471, b: 0.7372549, a: 1}
     - _EmissionColor: {r: 1.5905882, g: 1.4580393, b: 2.1819608, a: 2.6}

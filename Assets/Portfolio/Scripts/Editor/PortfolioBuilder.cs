@@ -29,6 +29,20 @@ namespace Portfolio.EditorTools
         static readonly Dictionary<string, Mesh> meshes = new Dictionary<string, Mesh>();
         static readonly Dictionary<string, Material> materials = new Dictionary<string, Material>();
         static Shader plasticShader, screenShader, shaftShader, skyShader, dustShader;
+
+        // Texture calculée par le shader selon le matériau : 1 parquet, 2 veinage du bois, 3 tissu, 4 peinture murale.
+        static readonly Dictionary<string, int> Surfaces = new Dictionary<string, int>
+        {
+            { "r1_floor", 1 }, { "r2_floor", 1 }, { "r3_floor", 1 },
+            { "r1_wood", 2 }, { "r1_wood_light", 2 }, { "r2_desk", 2 }, { "r3_oak", 2 }, { "kit_wood", 2 },
+            { "kit_wood_dark", 2 }, { "trunk", 2 },
+            { "r1_curtain", 3 }, { "r1_rug", 3 }, { "r1_rug_light", 3 }, { "r1_blanket", 3 }, { "r1_cushion", 3 },
+            { "mattress", 3 }, { "pillow", 3 }, { "r2_rug", 3 }, { "r2_rug_light", 3 }, { "r2_blanket", 3 },
+            { "r2_mattress", 3 }, { "r2_pillow", 3 }, { "r2_beanbag", 3 }, { "r2_chair", 3 }, { "r3_rug", 3 },
+            { "r3_rug_stripe", 3 }, { "r3_sage", 3 }, { "r3_chair", 3 }, { "gym_bag", 3 }, { "cork", 3 },
+            { "kit_fabric", 3 },
+            { "r1_wall", 4 }, { "r2_wall", 4 }, { "r3_wall", 4 }
+        };
         static System.Random random;
 
         [MenuItem("Portfolio/Reconstruire la scène")]
@@ -97,9 +111,9 @@ namespace Portfolio.EditorTools
 
             Volume[] volumes =
             {
-                MakeVolume(0, "Enfant", 0.1f, -8f, 14f, 6f, 0.5f, 0.22f),
-                MakeVolume(1, "Ado", 0.45f, -14f, -12f, 10f, 0.85f, 0.3f),
-                MakeVolume(2, "Jeune adulte", 0.15f, -6f, 8f, 4f, 0.45f, 0.2f)
+                MakeVolume(0, "Enfant", 0.1f, -8f, 14f, 8f, 0.5f, 0.24f, "#6F7D8C", "#8C8273"),
+                MakeVolume(1, "Ado", 0.45f, -14f, -12f, 10f, 0.85f, 0.32f, "#6B6A8A", "#7F8888"),
+                MakeVolume(2, "Jeune adulte", 0.15f, -6f, 8f, 7f, 0.45f, 0.22f, "#73808A", "#8E8472")
             };
 
             var directorObject = new GameObject("Directeur");
@@ -144,6 +158,24 @@ namespace Portfolio.EditorTools
             renderer.FindProperty("m_RenderingMode").intValue = 0;
             renderer.ApplyModifiedPropertiesWithoutUndo();
 
+            // Occlusion ambiante : ombres de contact sous les meubles et dans les angles.
+            foreach (ScriptableRendererFeature feature in rendererData.rendererFeatures)
+            {
+                if (!feature || feature.GetType().Name != "ScreenSpaceAmbientOcclusion") continue;
+                var occlusion = new SerializedObject(feature);
+                SerializedProperty settings = occlusion.FindProperty("m_Settings");
+                if (settings == null) continue;
+                SetFloat(settings, "Intensity", 1.1f);
+                SetFloat(settings, "Radius", 0.5f);
+                SetFloat(settings, "DirectLightingStrength", 0.4f);
+                SetFloat(settings, "Falloff", 60f);
+                SetInt(settings, "Samples", 1);
+                SetInt(settings, "BlurQuality", 0);
+                occlusion.ApplyModifiedPropertiesWithoutUndo();
+                feature.SetActive(true);
+                EditorUtility.SetDirty(feature);
+            }
+
             var pipelineAsset = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(pipelinePath);
             var pipeline = new SerializedObject(pipelineAsset);
             pipeline.FindProperty("m_RendererDataList").GetArrayElementAtIndex(0).objectReferenceValue = rendererData;
@@ -170,8 +202,20 @@ namespace Portfolio.EditorTools
             QualitySettings.SetQualityLevel(current, false);
         }
 
+        static void SetFloat(SerializedProperty parent, string name, float value)
+        {
+            SerializedProperty property = parent.FindPropertyRelative(name);
+            if (property != null) property.floatValue = value;
+        }
+
+        static void SetInt(SerializedProperty parent, string name, int value)
+        {
+            SerializedProperty property = parent.FindPropertyRelative(name);
+            if (property != null) property.intValue = value;
+        }
+
         static Volume MakeVolume(int index, string label, float exposure, float saturation, float temperature,
-            float contrast, float bloom, float vignette)
+            float contrast, float bloom, float vignette, string shadowTint, string highlightTint)
         {
             var profile = ScriptableObject.CreateInstance<VolumeProfile>();
             AssetDatabase.CreateAsset(profile, $"{Generated}/Profiles/Ambiance_{index + 1}.asset");
@@ -191,6 +235,12 @@ namespace Portfolio.EditorTools
 
             var balance = AddOverride<WhiteBalance>(profile);
             balance.temperature.value = temperature;
+
+            // Ombres et hautes lumières teintées différemment : l'image gagne en profondeur sans saturer.
+            var toning = AddOverride<SplitToning>(profile);
+            toning.shadows.value = Hex(shadowTint);
+            toning.highlights.value = Hex(highlightTint);
+            toning.balance.value = -10f;
 
             var vignetteOverride = AddOverride<Vignette>(profile);
             vignetteOverride.intensity.value = vignette;
@@ -267,6 +317,12 @@ namespace Portfolio.EditorTools
             material.SetFloat("_Metallic", metallic);
             material.SetFloat("_RimStrength", 0.1f);
             if (emissionHex != null) material.SetColor("_EmissionColor", Hex(emissionHex) * emission);
+            if (Surfaces.TryGetValue(name, out int surface))
+            {
+                material.SetFloat("_Surface", surface);
+                // Le tissu accroche la lumière rasante : liseré plus marqué.
+                if (surface == 3) material.SetFloat("_RimStrength", 0.22f);
+            }
             return Register(name, material);
         }
 

@@ -36,6 +36,7 @@ namespace Portfolio
         int step = -1;
         bool busy;
         bool started;
+        Interactable hovered;
 
         void Awake()
         {
@@ -86,25 +87,39 @@ namespace Portfolio
                                      || keyboard.rightArrowKey.wasPressedThisFrame))
                 Advance();
 
+            // Survol : le nom de l'objet déjà découvert s'affiche sous le bouton ; un clic rouvre sa fiche.
             Pointer pointer = Pointer.current;
-            if (pointer == null || !pointer.press.wasPressedThisFrame || busy) return;
-            Vector2 position = pointer.position.ReadValue();
-            if (ui.IsPointerOverUI(position)) return;
-            if (!Physics.Raycast(cam.ScreenPointToRay(position), out RaycastHit hit, 100f)) return;
+            Interactable item = null;
+            if (pointer != null && !busy)
+            {
+                Vector2 position = pointer.position.ReadValue();
+                if (!ui.IsPointerOverUI(position)
+                    && Physics.Raycast(cam.ScreenPointToRay(position), out RaycastHit hit, 100f))
+                {
+                    item = hit.collider.GetComponentInParent<Interactable>();
+                    if (item != null && (item.room != room || item.step > step)) item = null;
+                }
+            }
 
-            Interactable item = hit.collider.GetComponentInParent<Interactable>();
-            if (item == null || item.room != room || item.step > step) return;
+            if (item != hovered)
+            {
+                hovered = item;
+                ui.SetHint(item != null ? "Relire : " + rooms[room].steps[item.step].title : null);
+            }
+
+            if (item == null || !pointer.press.wasPressedThisFrame) return;
             RoomStep s = rooms[room].steps[item.step];
             ui.ShowCard(s.title, s.body, item.step, rooms[room].steps.Length);
             Highlight(s.focus);
         }
 
-        void Begin()
+                void Begin()
         {
             started = true;
             StartCoroutine(rig.Settle(0.22f, 1.8f));
             ui.HideIntro();
             ui.SetChapter(rooms[0].chapter, rooms[0].title, rooms[0].subtitle);
+            ui.SetChapterIndex(0);
             ui.SetProgress(-1, rooms[0].steps.Length);
             ui.SetAction(NextLabel());
         }
@@ -238,6 +253,7 @@ namespace Portfolio
             step = -1;
             RoomController rc = rooms[room];
             ui.SetChapter(rc.chapter, rc.title, rc.subtitle);
+            ui.SetChapterIndex(room);
             ui.SetProgress(-1, rc.steps.Length);
             ui.SetAction(NextLabel());
             busy = false;

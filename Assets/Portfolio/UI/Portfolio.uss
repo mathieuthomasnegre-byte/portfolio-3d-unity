@@ -23,12 +23,16 @@
 .heading {
     position: absolute;
     left: 64px;
-    top: 52px;
+    top: 48px;
     max-width: 760px;
+    padding-left: 22px;
+    border-left-width: 3px;
+    border-left-color: rgb(217, 178, 106);
     opacity: 0;
-    translate: 0 -12px;
+    translate: -16px 0;
     transition-property: opacity, translate;
-    transition-duration: 0.6s;
+    transition-duration: 0.7s;
+    transition-timing-function: ease-out-cubic;
 }
 
 .heading--show {
@@ -37,36 +41,74 @@
 }
 
 .chapter {
-    font-size: 17px;
-    letter-spacing: 4px;
+    font-size: 16px;
+    letter-spacing: 5px;
     color: rgb(217, 178, 106);
     -unity-font-style: bold;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
+    text-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
 }
 
 .title {
     font-size: 46px;
     -unity-font-style: bold;
     white-space: normal;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
 .subtitle {
-    font-size: 22px;
-    color: rgba(236, 232, 224, 0.82);
+    font-size: 21px;
+    color: rgba(236, 232, 224, 0.86);
     white-space: normal;
-    margin-top: 4px;
-    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+    margin-top: 2px;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+}
+
+/* Fil des trois chambres, en haut à droite */
+
+.chapters {
+    position: absolute;
+    right: 64px;
+    top: 54px;
+    flex-direction: row;
+    align-items: center;
+    padding: 7px 6px;
+    background-color: rgba(20, 22, 26, 0.6);
+    border-radius: 24px;
+    border-width: 1px;
+    border-color: rgba(236, 232, 224, 0.13);
+}
+
+.chapter-pip {
+    font-size: 16px;
+    letter-spacing: 1px;
+    padding: 6px 16px;
+    margin: 0 2px;
+    border-radius: 16px;
+    color: rgba(236, 232, 224, 0.5);
+    -unity-font-style: bold;
+    transition-property: color, background-color;
+    transition-duration: 0.6s;
+}
+
+.chapter-pip--done {
+    color: rgba(236, 232, 224, 0.88);
+}
+
+.chapter-pip--current {
+    color: rgb(28, 26, 22);
+    background-color: rgb(217, 178, 106);
 }
 
 .signature {
     position: absolute;
-    right: 64px;
-    top: 58px;
-    font-size: 19px;
-    letter-spacing: 2px;
-    color: rgba(236, 232, 224, 0.75);
+    right: 70px;
+    top: 112px;
+    font-size: 15px;
+    letter-spacing: 3px;
+    color: rgba(236, 232, 224, 0.62);
     -unity-font-style: bold;
+    text-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
 }
 
 /* Fiche de l'étape */
@@ -74,34 +116,43 @@
 .card {
     position: absolute;
     left: 64px;
-    bottom: 150px;
-    width: 520px;
-    padding: 26px 30px 28px 30px;
-    background-color: rgba(22, 24, 28, 0.78);
-    border-radius: 16px;
-    border-left-width: 4px;
-    border-left-color: rgb(217, 178, 106);
+    bottom: 156px;
+    width: 540px;
+    padding: 26px 32px 30px 32px;
+    background-color: rgba(20, 22, 26, 0.84);
+    border-radius: 18px;
+    border-width: 1px;
+    border-color: rgba(236, 232, 224, 0.13);
+    border-top-width: 3px;
+    border-top-color: rgb(217, 178, 106);
     opacity: 0;
-    translate: 0 24px;
-    transition-property: opacity, translate;
-    transition-duration: 0.45s;
+    translate: 0 28px;
+    scale: 0.98 0.98;
+    transition-property: opacity, translate, scale;
+    transition-duration: 0.5s;
+    transition-timing-function: ease-out-cubic;
 }
 
 .card--show {
     opacity: 1;
     translate: 0 0;
+    scale: 1 1;
 }
 
 .card-step {
-    font-size: 15px;
+    align-self: flex-start;
+    font-size: 14px;
     letter-spacing: 3px;
+    padding: 4px 12px;
+    border-radius: 12px;
     color: rgb(217, 178, 106);
+    background-color: rgba(217, 178, 106, 0.14);
     -unity-font-style: bold;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
 }
 
 .card-title {
-    font-size: 30px;
+    font-size: 31px;
     -unity-font-style: bold;
     white-space: normal;
     margin-bottom: 10px;
@@ -119,7 +170,7 @@
     position: absolute;
     left: 0;
     right: 0;
-    bottom: 34px;
+    bottom: 30px;
     align-items: center;
 }
 
@@ -129,13 +180,13 @@
 }
 
 .dot {
-    width: 34px;
+    width: 30px;
     height: 5px;
     margin: 0 4px;
     border-radius: 3px;
     background-color: rgba(236, 232, 224, 0.28);
     transition-property: background-color;
-    transition-duration: 0.4s;
+    transition-duration: 0.45s;
 }
 
 .dot--done {
@@ -144,34 +195,42 @@
 
 .hint {
     font-size: 15px;
-    color: rgba(236, 232, 224, 0.55);
+    color: rgba(236, 232, 224, 0.62);
     margin-top: 10px;
+    text-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
+    transition-property: color;
+    transition-duration: 0.25s;
+}
+
+.hint--active {
+    color: rgb(232, 198, 132);
 }
 
 .action {
-    padding: 14px 34px;
+    padding: 15px 38px;
     font-size: 23px;
     -unity-font-style: bold;
     color: rgb(28, 26, 22);
     background-color: rgb(217, 178, 106);
     border-width: 0;
-    border-radius: 30px;
+    border-radius: 32px;
     margin: 0;
-    transition-property: background-color, scale, opacity;
-    transition-duration: 0.2s;
+    transition-property: background-color, scale, opacity, translate;
+    transition-duration: 0.25s;
 }
 
 .action:hover {
     background-color: rgb(232, 198, 132);
-    scale: 1.04 1.04;
+    scale: 1.05 1.05;
 }
 
 .action:active {
-    scale: 0.98 0.98;
+    scale: 0.97 0.97;
 }
 
 .action--busy {
     opacity: 0;
+    translate: 0 10px;
 }
 
 .secondary {
@@ -179,10 +238,10 @@
     font-size: 23px;
     -unity-font-style: bold;
     color: rgb(236, 232, 224);
-    background-color: rgba(236, 232, 224, 0.12);
+    background-color: rgba(236, 232, 224, 0.1);
     border-width: 1px;
     border-color: rgba(236, 232, 224, 0.4);
-    border-radius: 30px;
+    border-radius: 32px;
     margin: 0 0 0 14px;
     transition-property: background-color;
     transition-duration: 0.2s;
@@ -215,16 +274,37 @@
     bottom: 0;
     align-items: center;
     justify-content: center;
-    background-color: rgba(14, 15, 18, 0.62);
+    background-color: rgba(14, 15, 18, 0.6);
+    opacity: 1;
+    transition-property: opacity;
+    transition-duration: 0.6s;
+}
+
+.overlay--out {
+    opacity: 0;
 }
 
 .panel {
-    width: 760px;
+    width: 780px;
     max-width: 90%;
-    padding: 46px 52px;
+    padding: 48px 56px;
     align-items: flex-start;
-    background-color: rgba(22, 24, 28, 0.9);
-    border-radius: 22px;
+    background-color: rgba(20, 22, 26, 0.92);
+    border-radius: 24px;
+    border-width: 1px;
+    border-color: rgba(236, 232, 224, 0.13);
+    border-top-width: 3px;
+    border-top-color: rgb(217, 178, 106);
+    translate: 0 0;
+    scale: 1 1;
+    transition-property: translate, scale;
+    transition-duration: 0.6s;
+    transition-timing-function: ease-out-cubic;
+}
+
+.overlay--out .panel {
+    translate: 0 26px;
+    scale: 0.97 0.97;
 }
 
 .kicker {
@@ -236,7 +316,7 @@
 }
 
 .hero {
-    font-size: 64px;
+    font-size: 66px;
     -unity-font-style: bold;
     white-space: normal;
 }

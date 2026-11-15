@@ -33,6 +33,8 @@ namespace Portfolio.EditorTools
             Shafts(t, "r1", wx0, wx1, wy0, wy1, room.sunDirection, "#FFE3B0", 0.2f);
             Dust(t, "r1", new Vector3(-0.2f, 1.4f, 1.1f), new Vector3(3.2f, 2.4f, 3.2f), "#FFE9C4");
             PointLight(t, "Lumière d'ambiance", new Vector3(1.2f, 2.8f, -1f), "#FFE8CC", 3.5f, 9f);
+            // Le soleil rebondit sur le parquet et réchauffe le bas des murs et des meubles.
+            PointLight(t, "Rebond du soleil", new Vector3(0.9f, 1.1f, 0.4f), "#F2CFA0", 1.1f, 5f);
 
             // Rideaux
             Material curtain = Mat("r1_curtain", "#E4D8BE", 0.05f);
@@ -355,6 +357,7 @@ namespace Portfolio.EditorTools
             Shafts(t, "r3", wx0, wx1, wy0, wy1, room.sunDirection, "#FFD9A8", 0.14f);
             Dust(t, "r3", new Vector3(2f, 1.3f, 0.6f), new Vector3(3.4f, 2.4f, 3.6f), "#FFE2B8");
             PointLight(t, "Lumière d'ambiance", new Vector3(1.2f, 2.9f, -1f), "#FFEAD2", 3.2f, 9f);
+            PointLight(t, "Rebond du soleil", new Vector3(2.4f, 1.1f, -0.4f), "#F0CBA0", 1.1f, 5f);
 
             Box(t, "Tapis", new Vector3(0.4f, 0.012f, -0.6f), new Vector3(4.1f, 0.024f, 2.7f), Mat("r3_rug", "#D8CFBE", 0.05f), 0.01f);
             Box(t, "Tapis bande", new Vector3(0.4f, 0.014f, -0.6f), new Vector3(3.6f, 0.026f, 0.5f), Mat("r3_rug_stripe", "#B9A98C", 0.05f), 0.01f);
@@ -514,7 +517,9 @@ namespace Portfolio.EditorTools
                     "Épingler mon badge", badge, new[] { badge }),
                 Step("Deux hackathons, deux rôles",
                     "Staff de Secure Horizons : 36 heures, 130 participants, des projets IA, cybersécurité et blockchain "
-                    + "à encadrer. Puis participant à Hack the Feed, comme data analyst et builder.",
+                    + "à encadrer. Puis participant à Hack the Feed, comme data analyst et builder : notre équipe a créé un moyen "
+                    + "de capter les vrais sujets qui préoccupent les Français, au-delà des débats de plateau, "
+                    + "en analysant des vidéos publiées sur les réseaux sociaux.",
                     "Ajouter les hackathons", hackathons, new[] { hackathons }),
                 Step("Le culot d'aller voir",
                     "Au BIG de Bpifrance, je suis allé à la rencontre d'entrepreneurs et d'acteurs de l'innovation. "
