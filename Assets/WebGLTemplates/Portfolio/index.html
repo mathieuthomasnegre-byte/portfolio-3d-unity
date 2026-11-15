@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
+    <meta name="description" content="Portfolio interactif de Mathieu Negre : trois chambres, trois âges, un parcours à assembler.">
+    <title>{{{ PRODUCT_NAME }}}</title>
+    <style>
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #1c1e22; }
+      body { font-family: "Segoe UI", system-ui, -apple-system, sans-serif; color: #ece8e0; }
+      #unity-canvas { position: fixed; left: 0; top: 0; width: 100%; height: 100%; display: block; background: #1c1e22; }
+      #loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #1c1e22; transition: opacity 0.6s ease; }
+      #loading.done { opacity: 0; pointer-events: none; }
+      #loading .kicker { font-size: 13px; letter-spacing: 5px; color: #d9b26a; font-weight: 700; margin-bottom: 10px; }
+      #loading h1 { font-size: 40px; margin: 0 0 26px 0; font-weight: 700; }
+      #bar { width: 260px; height: 5px; border-radius: 3px; background: rgba(236, 232, 224, 0.18); overflow: hidden; }
+      #fill { width: 0%; height: 100%; background: #d9b26a; transition: width 0.2s ease; }
+      #status { margin-top: 14px; font-size: 14px; color: rgba(236, 232, 224, 0.6); min-height: 20px; text-align: center; padding: 0 20px; }
+    </style>
+  </head>
+  <body>
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="loading">
+      <div class="kicker">PORTFOLIO INTERACTIF</div>
+      <h1>{{{ PRODUCT_NAME }}}</h1>
+      <div id="bar"><div id="fill"></div></div>
+      <div id="status">Chargement des chambres…</div>
+    </div>
+    <script src="Build/{{{ LOADER_FILENAME }}}"></script>
+    <script>
+      var loading = document.getElementById("loading");
+      var fill = document.getElementById("fill");
+      var status = document.getElementById("status");
+
+      createUnityInstance(document.querySelector("#unity-canvas"), {
+        arguments: [],
+#if PROGRESSIVE_ASSET_LOADING
+        primaryDataUrls: {{{ JSON.stringify(PRIMARY_DATA_FILES) }}},
+        secondaryDataUrls: {{{ JSON.stringify(SECONDARY_DATA_FILES) }}},
+#else
+        dataUrl: "Build/{{{ DATA_FILENAME }}}",
+#endif
+        frameworkUrl: "Build/{{{ FRAMEWORK_FILENAME }}}",
+#if USE_WASM
+        codeUrl: "Build/{{{ CODE_FILENAME }}}",
+#endif
+#if SYMBOLS_FILENAME
+        symbolsUrl: "Build/{{{ SYMBOLS_FILENAME }}}",
+#endif
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+        productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+        productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+      }, function (progress) {
+        fill.style.width = Math.round(progress * 100) + "%";
+      }).then(function () {
+        loading.classList.add("done");
+      }).catch(function (message) {
+        console.error(message);
+        status.textContent = "Le portfolio n'a pas pu se charger sur ce navigateur. Essayez sur ordinateur avec un navigateur récent.";
+      });
+    </script>
+  </body>
+</html>
