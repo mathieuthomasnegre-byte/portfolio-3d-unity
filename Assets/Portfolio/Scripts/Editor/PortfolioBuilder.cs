@@ -442,6 +442,32 @@ namespace Portfolio.EditorTools
             return step;
         }
 
+        /// <summary>
+        /// Objets d'une chambre qui « se montent » à l'arrivée de la caméra, de la gauche vers la droite.
+        /// Les murs, le ciel et les lumières restent en place ; le vaisseau arrive par ses propres moyens.
+        /// </summary>
+        static Transform[] Assemble(Transform room, GameObject keepsake)
+        {
+            var list = new List<Transform>();
+            foreach (Transform child in room)
+            {
+                if (child.gameObject == keepsake) continue;
+                if (child.name == "Murs et sol" || child.name == "Ciel" || child.name == "Rayons de lumière") continue;
+                if (child.GetComponent<ParticleSystem>()) continue;
+                if (child.GetComponentsInChildren<MeshRenderer>(true).Length == 0) continue;
+                list.Add(child);
+            }
+            list.Sort((a, b) => AssembleOrder(a).CompareTo(AssembleOrder(b)));
+            return list.ToArray();
+        }
+
+        static float AssembleOrder(Transform item)
+        {
+            Renderer[] renderers = item.GetComponentsInChildren<Renderer>(true);
+            Vector3 center = renderers.Length > 0 ? renderers[0].bounds.center : item.position;
+            return center.x - center.z * 0.4f;
+        }
+
         /// <summary>Rend un objet cliquable : boîte de collision alignée sur le monde, englobant ses formes.</summary>
         static void MakeInteractable(GameObject target, int room, int step)
         {

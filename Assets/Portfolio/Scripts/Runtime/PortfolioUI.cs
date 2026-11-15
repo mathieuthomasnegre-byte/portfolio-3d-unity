@@ -26,8 +26,8 @@ namespace Portfolio
         public Action Begin;
         public Action Restart;
 
-        VisualElement root, hud, heading, card, intro, contact, dots;
-        Label chapter, title, subtitle, cardStep, cardTitle, cardBody;
+        VisualElement root, hud, heading, card, intro, contact, dots, interlude;
+        Label chapter, title, subtitle, cardStep, cardTitle, cardBody, interludeKicker, interludeTitle;
         Button action;
         bool built;
 
@@ -63,6 +63,10 @@ namespace Portfolio
             action.AddToClassList("action");
             footer.Add(action);
             Text("hint", footer).text = "Clique sur les objets déjà découverts pour relire leur fiche";
+
+            interlude = Box("interlude", hud);
+            interludeKicker = Text("interlude-kicker", interlude);
+            interludeTitle = Text("interlude-title", interlude);
 
             BuildIntro();
             BuildContact();
@@ -155,6 +159,16 @@ namespace Portfolio
             cardTitle.text = titleText;
             cardBody.text = body;
             card.AddToClassList("card--show");
+        }
+
+        /// <summary>Grand titre centré pendant le passage d'une chambre à l'autre ; null l'efface.</summary>
+        public void SetInterlude(string kicker, string text)
+        {
+            bool show = !string.IsNullOrEmpty(text);
+            interlude.EnableInClassList("interlude--show", show);
+            if (!show) return;
+            interludeKicker.text = kicker;
+            interludeTitle.text = text;
         }
 
         public void HideCard() => card.RemoveFromClassList("card--show");

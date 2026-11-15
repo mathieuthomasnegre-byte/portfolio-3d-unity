@@ -21,3 +21,4 @@
 .vs/
 .vscode/
 crashlytics-build.properties
+/Data/

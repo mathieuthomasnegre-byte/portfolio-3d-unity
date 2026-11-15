@@ -172,6 +172,8 @@ namespace Portfolio.EditorTools
             room.finaleReveal = new[] { glow.transform };
             room.finaleLights = new[] { engineLight };
             room.finaleEnable = new Behaviour[] { floaty };
+            room.keepsake = ship.transform;
+            room.assemble = Assemble(t, ship);
 
             MakeInteractable(bin, index, 0);
             MakeInteractable(booklet, index, 1);
@@ -219,9 +221,9 @@ namespace Portfolio.EditorTools
             Box(desk, "Côté droit", new Vector3(1f, 0.36f, 2.72f), new Vector3(0.05f, 0.72f, 0.76f), deskWood, 0.012f);
             Box(desk, "Fond", new Vector3(-0.8f, 0.45f, 3.08f), new Vector3(3.6f, 0.5f, 0.03f), deskWood, 0.01f);
             Box(desk, "Tapis de souris", new Vector3(-0.75f, 0.768f, 2.5f), new Vector3(1.15f, 0.006f, 0.42f), Mat("mousepad", "#262A30", 0.2f), 0.003f);
-            Box(desk, "Clavier", new Vector3(-0.85f, 0.785f, 2.5f), new Vector3(0.62f, 0.03f, 0.2f), dark, 0.01f);
-            Box(desk, "Rétroéclairage", new Vector3(-0.85f, 0.801f, 2.5f), new Vector3(0.56f, 0.004f, 0.15f), Mat("key_glow", "#3A3F47", 0.3f, 0f, "#9C8FD6", 0.7f), 0.002f);
-            Box(desk, "Souris", new Vector3(-0.3f, 0.785f, 2.48f), new Vector3(0.07f, 0.035f, 0.115f), dark, 0.015f);
+            Model(desk, "Clavier", "computerKeyboard", new Vector3(-0.85f, 0.771f, 2.5f), 0f, 0.62f,
+                ("metalDark", dark), ("metalMedium", Mat("key_glow", "#3A3F47", 0.3f, 0f, "#9C8FD6", 0.7f)));
+            Model(desk, "Souris", "computerMouse", new Vector3(-0.3f, 0.771f, 2.48f), 0f, 0.125f, ("metalDark", dark));
 
             GameObject chart = Monitor(desk, "Écran marchés", new Vector3(-2f, 1.3f, 2.85f), -20f, 1f, 0.58f, deskTop,
                 ScreenMat("screen_chart", 0, "#0E1418", "#7FC8BC", "#D8B26A", 1.5f), out Renderer chartScreen);
@@ -249,16 +251,18 @@ namespace Portfolio.EditorTools
             Box(t, "Étagère", new Vector3(-0.8f, 2.15f, 3.05f), new Vector3(3.7f, 0.05f, 0.28f), deskWood, 0.012f);
             Box(t, "Ruban LED", new Vector3(-0.8f, 2.112f, 2.94f), new Vector3(3.6f, 0.02f, 0.02f), Mat("led_violet", "#8F84BC", 0.3f, 0f, "#9C8FD6", 2.6f), 0.004f);
             Light ledLight = PointLight(t, "Lueur du ruban LED", new Vector3(-0.8f, 1.95f, 2.6f), "#9C8FD6", 2.2f, 4.5f);
-            BuildShip(t, new Vector3(-2f, 2.18f, 3.03f), 100f, 0.3f, out _, out _);
+            GameObject shelfShip = BuildShip(t, new Vector3(-2f, 2.18f, 3.03f), 100f, 0.3f, out _, out _);
             Books(t, new Vector3(-1.3f, 2.175f, 3.05f), false, 10, 0.3f);
-            Box(t, "Enceinte", new Vector3(0.75f, 2.3f, 3.05f), new Vector3(0.18f, 0.26f, 0.18f), dark, 0.02f);
-            Cyl(t, "Haut-parleur", new Vector3(0.75f, 2.3f, 2.96f), 0.06f, 0.01f, furniture, new Vector3(-90f, 0f, 0f), 18);
+            Model(t, "Enceinte d'étagère", "speakerSmall", new Vector3(0.75f, 2.175f, 3.05f), 0f, 0.3f,
+                ("wood", dark), ("metalMedium", furniture));
+            Model(t, "Enceinte", "speaker", new Vector3(1.85f, 0f, 2.9f), 0f, 1.05f, ("wood", dark), ("metalMedium", furniture));
+            Model(t, "Corbeille", "trashcan", new Vector3(1.5f, 0f, 1.95f), 0f, 0.42f, ("metal", furniture), ("metalDark", dark));
             Ball(t, "Trophée", new Vector3(0.3f, 2.3f, 3.05f), Vector3.one * 0.16f, Mat("gold", "#C9A85C", 0.7f, 0.85f));
             Cyl(t, "Socle du trophée", new Vector3(0.3f, 2.175f, 3.05f), 0.06f, 0.05f, dark, null, 16);
 
             // Lit et chevet
             Bed(t, furniture, Mat("r2_mattress", "#D9D6D0", 0.1f), Mat("r2_blanket", "#454E60", 0.08f), Mat("r2_pillow", "#C9CCD2", 0.1f));
-            Bedside(t, furniture, "#F0B880", 0.5f, "#F0B880", 1.1f);
+            PointLight(t, "Veilleuse", new Vector3(-2.9f, 0.9f, 2.5f), "#F0B880", 1.1f, 4.5f);
             Transform wallArt = Group(t, "Affiche", new Vector3(-3.35f, 2.35f, 3.19f)).transform;
             Box(wallArt, "Fond", Vector3.zero, new Vector3(0.85f, 1.1f, 0.02f), Mat("poster_violet", "#62587A", 0.2f), 0.004f);
             Cyl(wallArt, "Soleil", new Vector3(0f, 0.15f, -0.01f), 0.18f, 0.01f, Mat("poster_amber", "#D2A862", 0.2f), new Vector3(-90f, 0f, 0f), 32);
@@ -284,7 +288,7 @@ namespace Portfolio.EditorTools
             Ball(tennisBalls.transform, "Balle", new Vector3(0f, 0.04f, 0f), Vector3.one * 0.08f, tennisBall);
             Ball(tennisBalls.transform, "Balle", new Vector3(0.11f, 0.04f, 0.05f), Vector3.one * 0.08f, tennisBall);
             Ball(tennisBalls.transform, "Balle", new Vector3(0.04f, 0.04f, -0.1f), Vector3.one * 0.08f, tennisBall);
-            GameObject watch = Watch(sport.transform, new Vector3(-2.47f, 0.5f, 2.72f), 20f);
+            GameObject watch = Watch(sport.transform, new Vector3(-2.42f, 0.765f, 2.48f), 20f);
 
             room.steps = new[]
             {
@@ -310,6 +314,9 @@ namespace Portfolio.EditorTools
                     "Sortir le sac de sport", sport, new[] { racket, weights, tennisBalls, watch })
             };
             room.finaleLights = new[] { ledLight };
+            room.keepsake = shelfShip.transform;
+            room.interlude = "Quelques années plus tard";
+            room.assemble = Assemble(t, shelfShip);
 
             MakeInteractable(chart, index, 0);
             MakeInteractable(game, index, 1);
@@ -462,27 +469,19 @@ namespace Portfolio.EditorTools
             Books(shelf, new Vector3(0.02f, 0.62f, -0.74f), true, 9, 0.36f, 0.24f);
             Books(shelf, new Vector3(0.02f, 1.16f, -0.1f), true, 12, 0.36f, 0.24f);
             Books(shelf, new Vector3(0.02f, 1.7f, -0.74f), true, 7, 0.34f, 0.24f);
-            Transform smallPlant = Group(shelf, "Petite plante", new Vector3(0.02f, 0.62f, 0.45f)).transform;
-            Cyl(smallPlant, "Pot", Vector3.zero, 0.09f, 0.13f, Mat("pot", "#B58A6C", 0.25f), null, 18);
-            Ball(smallPlant, "Feuilles", new Vector3(0f, 0.24f, 0f), new Vector3(0.26f, 0.24f, 0.26f), Mat("leaf", "#6C8C70", 0.3f));
-            Ball(smallPlant, "Feuilles", new Vector3(0.04f, 0.33f, 0.05f), new Vector3(0.16f, 0.16f, 0.16f), Mat("leaf_light", "#86A187", 0.3f));
+            Model(shelf, "Petite plante", "plantSmall1", new Vector3(0.02f, 0.62f, 0.45f), 0f, 0.32f,
+                ("wood", Mat("pot", "#B58A6C", 0.25f)), ("plant", Mat("leaf", "#6C8C70", 0.3f)));
             Watch(shelf, new Vector3(0.02f, 1.16f, -0.45f), -90f);
             Box(shelf, "Écrin", new Vector3(0.02f, 1.7f, 0.35f), new Vector3(0.2f, 0.09f, 0.26f), Mat("box_green", "#4F6557", 0.3f), 0.015f);
             Ball(shelf, "Trophée", new Vector3(0.02f, 1.83f, 0.62f), Vector3.one * 0.15f, Mat("gold", "#C9A85C", 0.7f, 0.85f));
             Cyl(shelf, "Socle du trophée", new Vector3(0.02f, 1.7f, 0.62f), 0.06f, 0.06f, dark, null, 16);
-            BuildShip(shelf, new Vector3(0.02f, 2.245f, -0.05f), 20f, 0.32f, out _, out _);
+            GameObject shelfShip = BuildShip(shelf, new Vector3(0.02f, 2.245f, -0.05f), 20f, 0.32f, out _, out _);
 
             // Fauteuil et lampadaire
-            Transform armchair = Group(t, "Fauteuil", new Vector3(-2.55f, 0f, -2f), new Vector3(0f, 55f, 0f)).transform;
-            Box(armchair, "Assise", new Vector3(0f, 0.3f, 0f), new Vector3(0.82f, 0.3f, 0.78f), sage, 0.09f);
-            Box(armchair, "Dossier", new Vector3(0f, 0.72f, -0.32f), new Vector3(0.82f, 0.62f, 0.18f), sage, 0.08f);
-            Box(armchair, "Accoudoir gauche", new Vector3(-0.43f, 0.45f, 0f), new Vector3(0.13f, 0.46f, 0.78f), sage, 0.055f);
-            Box(armchair, "Accoudoir droit", new Vector3(0.43f, 0.45f, 0f), new Vector3(0.13f, 0.46f, 0.78f), sage, 0.055f);
-            Box(armchair, "Coussin", new Vector3(0.05f, 0.56f, -0.16f), new Vector3(0.4f, 0.36f, 0.12f), Mat("r3_cushion", "#D0B98C", 0.08f), 0.055f, new Vector3(-12f, 0f, 8f));
+            Model(t, "Fauteuil", "loungeChair", new Vector3(-2.55f, 0f, -2f), 115f, 1f, ("carpet", sage), ("wood", oak));
             Transform floorLamp = Group(t, "Lampadaire", new Vector3(-3.45f, 0f, -2.7f)).transform;
-            Cyl(floorLamp, "Socle", Vector3.zero, 0.17f, 0.03f, brass, null, 24);
-            Cyl(floorLamp, "Mât", new Vector3(0f, 0.03f, 0f), 0.015f, 1.6f, brass, null, 12);
-            Cyl(floorLamp, "Abat-jour", new Vector3(0f, 1.6f, 0f), 0.2f, 0.26f, Mat("shade_cream", "#EDE3D0", 0.2f, 0f, "#FFD9A8", 0.6f), null, 28);
+            Model(floorLamp, "Lampe", "lampRoundFloor", Vector3.zero, 0f, 1.75f,
+                ("metal", brass), ("lamp", Mat("shade_cream", "#EDE3D0", 0.2f, 0f, "#FFD9A8", 0.6f)));
             PointLight(floorLamp, "Lumière du lampadaire", new Vector3(0.25f, 1.55f, 0.25f), "#FFD9A8", 2.6f, 4.5f);
 
             Plant(t, new Vector3(3.45f, 0f, 2.45f), 1f);
@@ -530,6 +529,10 @@ namespace Portfolio.EditorTools
                     + "Un prototype fonctionne déjà en local.",
                     "Poser le téléphone", phone, new[] { phone }, false, null, new[] { phoneScreen })
             };
+
+            room.keepsake = shelfShip.transform;
+            room.interlude = "Aujourd'hui";
+            room.assemble = Assemble(t, shelfShip);
 
             MakeInteractable(laptop, index, 0);
             MakeInteractable(badge, index, 1);

@@ -1,3 +1,4 @@
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -133,24 +134,76 @@ namespace Portfolio.EditorTools
         /// <summary>Lit contre le mur gauche, tête au mur du fond : il reste à la même place dans les trois chambres.</summary>
         static void Bed(Transform room, Material frame, Material mattress, Material blanket, Material pillow)
         {
-            Transform bed = Group(room, "Lit", new Vector3(-3.35f, 0f, 2.1f)).transform;
-            Box(bed, "Cadre", new Vector3(0f, 0.2f, 0f), new Vector3(1.1f, 0.3f, 2f), frame, 0.03f);
-            Box(bed, "Tête de lit", new Vector3(0f, 0.6f, 1.02f), new Vector3(1.1f, 0.95f, 0.08f), frame, 0.03f);
-            Box(bed, "Matelas", new Vector3(0f, 0.43f, 0f), new Vector3(1.04f, 0.18f, 1.94f), mattress, 0.06f);
-            Box(bed, "Couverture", new Vector3(0f, 0.47f, -0.34f), new Vector3(1.08f, 0.2f, 1.28f), blanket, 0.07f);
-            Box(bed, "Oreiller", new Vector3(0f, 0.59f, 0.7f), new Vector3(0.8f, 0.14f, 0.42f), pillow, 0.06f);
+            Model(room, "Lit", "bedSingle", new Vector3(-3.35f, 0f, 2.1f), 0f, 2.1f,
+                ("wood", frame), ("metal", frame), ("carpetWhite", mattress), ("carpet", blanket));
         }
 
         static void Bedside(Transform room, Material body, string shadeHex, float shadeGlow, string lightHex, float lightIntensity)
         {
             Transform table = Group(room, "Table de chevet", new Vector3(-2.35f, 0f, 2.85f)).transform;
-            Box(table, "Meuble", new Vector3(0f, 0.25f, 0f), new Vector3(0.55f, 0.5f, 0.5f), body, 0.03f);
-            Box(table, "Tiroir", new Vector3(0f, 0.32f, -0.255f), new Vector3(0.45f, 0.18f, 0.02f), body, 0.01f);
-            Cyl(table, "Pied de lampe", new Vector3(0.08f, 0.5f, 0.08f), 0.08f, 0.02f, Mat("metal_dark", "#3A3F47", 0.6f, 0.7f));
-            Cyl(table, "Tige de lampe", new Vector3(0.08f, 0.5f, 0.08f), 0.014f, 0.2f, Mat("metal_dark", "#3A3F47", 0.6f, 0.7f));
-            Ball(table, "Abat-jour", new Vector3(0.08f, 0.78f, 0.08f), Vector3.one * 0.24f,
-                Mat("shade_" + shadeHex, "#EDE3D0", 0.2f, 0f, shadeHex, shadeGlow));
+            Material metal = Mat("metal_dark", "#3A3F47", 0.6f, 0.7f);
+            Model(table, "Meuble", "cabinetBedDrawer", Vector3.zero, 0f, 0.56f,
+                ("wood", body), ("_defaultMat", body), ("metal", metal));
+            Model(table, "Lampe", "lampRoundTable", new Vector3(0.06f, 0.53f, 0.04f), 0f, 0.5f,
+                ("metal", metal), ("lamp", Mat("shade_" + shadeHex, "#EDE3D0", 0.2f, 0f, shadeHex, shadeGlow)));
             PointLight(table, "Lumière de chevet", new Vector3(0.05f, 0.95f, -0.2f), lightHex, lightIntensity, 4.5f);
+        }
+
+        /// <summary>
+        /// Modèle du « Furniture Kit » de Kenney (kenney.nl, licence CC0), posé sur son point bas central.
+        /// size : plus grande dimension voulue, en mètres. palette : matériau du kit → matériau de la chambre.
+        /// </summary>
+        static GameObject Model(Transform parent, string name, string file, Vector3 position, float yaw, float size,
+            params (string slot, Material material)[] palette)
+        {
+            string path = $"{Root}/Models/Kenney/{file}.fbx";
+            GameObject asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (!asset) throw new System.InvalidOperationException("Modèle introuvable : " + path);
+
+            GameObject holder = Group(parent, name, position, new Vector3(0f, yaw, 0f));
+            GameObject model = Object.Instantiate(asset);
+            model.name = file;
+            model.transform.position = Vector3.zero;
+
+            Renderer[] renderers = model.GetComponentsInChildren<Renderer>();
+            Bounds bounds = renderers[0].bounds;
+            foreach (Renderer r in renderers) bounds.Encapsulate(r.bounds);
+            float scale = size / Mathf.Max(bounds.size.x, Mathf.Max(bounds.size.y, bounds.size.z));
+
+            model.transform.SetParent(holder.transform, false);
+            model.transform.localScale *= scale;
+            model.transform.localPosition = -new Vector3(bounds.center.x, bounds.min.y, bounds.center.z) * scale;
+
+            foreach (Renderer r in renderers)
+            {
+                Material[] slots = r.sharedMaterials;
+                for (int i = 0; i < slots.Length; i++) slots[i] = KitMaterial(slots[i] ? slots[i].name : "", palette);
+                r.sharedMaterials = slots;
+            }
+            return holder;
+        }
+
+        static Material KitMaterial(string slot, (string slot, Material material)[] palette)
+        {
+            foreach ((string key, Material material) in palette)
+                if (key == slot) return material;
+            switch (slot)
+            {
+                case "wood": return Mat("kit_wood", "#B79E7B", 0.3f);
+                case "woodDark": return Mat("kit_wood_dark", "#7A6654", 0.25f);
+                case "metal": return Mat("steel", "#B4B9BF", 0.7f, 0.85f);
+                case "metalLight": return Mat("aluminium", "#B9BEC4", 0.6f, 0.7f);
+                case "metalMedium": return Mat("kit_metal_medium", "#6B7078", 0.5f, 0.5f);
+                case "metalDark": return Mat("metal_dark", "#3A3F47", 0.6f, 0.7f);
+                case "carpet": return Mat("kit_fabric", "#8A8378", 0.1f);
+                case "carpetWhite": return Mat("mattress", "#EDE9E0", 0.1f);
+                case "plant": return Mat("leaf", "#6C8C70", 0.3f);
+                case "fur": return Mat("kit_fur", "#B08D6E", 0.05f);
+                case "lamp": return Mat("shade_cream", "#EDE3D0", 0.2f, 0f, "#FFD9A8", 0.6f);
+                default:
+                    Debug.LogWarning("[Portfolio] Matériau de kit inconnu : " + slot + " (" + palette.Length + ")");
+                    return Mat("kit_default", "#D9D6D0", 0.2f);
+            }
         }
 
         static void Books(Transform parent, Vector3 start, bool alongZ, int count, float maxHeight, float depth = 0.2f)
@@ -188,15 +241,8 @@ namespace Portfolio.EditorTools
 
         static void Chair(Transform room, Vector3 position, float yaw, Material fabric, Material accent)
         {
-            Transform chair = Group(room, "Chaise", position, new Vector3(0f, yaw, 0f)).transform;
-            Material metal = Mat("metal_dark", "#3A3F47", 0.6f, 0.7f);
-            Cyl(chair, "Piètement", new Vector3(0f, 0.02f, 0f), 0.3f, 0.04f, metal);
-            Cyl(chair, "Colonne", new Vector3(0f, 0.06f, 0f), 0.035f, 0.38f, metal);
-            Box(chair, "Assise", new Vector3(0f, 0.48f, 0f), new Vector3(0.56f, 0.1f, 0.55f), fabric, 0.04f);
-            Box(chair, "Dossier", new Vector3(0f, 0.95f, -0.26f), new Vector3(0.52f, 0.85f, 0.1f), fabric, 0.05f);
-            Box(chair, "Bande", new Vector3(0f, 0.95f, -0.315f), new Vector3(0.12f, 0.8f, 0.02f), accent, 0.008f);
-            Box(chair, "Accoudoir gauche", new Vector3(-0.3f, 0.66f, 0f), new Vector3(0.06f, 0.05f, 0.36f), metal, 0.02f);
-            Box(chair, "Accoudoir droit", new Vector3(0.3f, 0.66f, 0f), new Vector3(0.06f, 0.05f, 0.36f), metal, 0.02f);
+            Model(room, "Chaise", "chairDesk", position, yaw, 1.15f,
+                ("carpet", fabric), ("metalMedium", Mat("metal_dark", "#3A3F47", 0.6f, 0.7f)));
         }
 
         /// <summary>Vaisseau spatial en briques, original (aucun set existant copié), monté en cinq groupes.</summary>
@@ -339,17 +385,9 @@ namespace Portfolio.EditorTools
 
         static void Plant(Transform room, Vector3 position, float scale)
         {
-            Transform plant = Group(room, "Plante", position).transform;
-            plant.localScale = Vector3.one * scale;
-            Cyl(plant, "Pot", Vector3.zero, 0.22f, 0.4f, Mat("pot", "#B58A6C", 0.25f), null, 24);
-            Material leaf = Mat("leaf", "#6C8C70", 0.3f), leafLight = Mat("leaf_light", "#86A187", 0.3f);
-            Cyl(plant, "Tronc", new Vector3(0f, 0.4f, 0f), 0.025f, 0.5f, Mat("trunk", "#7A6654", 0.2f), null, 10);
-            for (int i = 0; i < 9; i++)
-            {
-                var center = new Vector3(Rand(-0.25f, 0.25f), Rand(0.8f, 1.45f), Rand(-0.25f, 0.25f));
-                float size = Rand(0.3f, 0.5f);
-                Ball(plant, "Feuillage", center, new Vector3(size, size * 0.85f, size), i % 3 == 0 ? leafLight : leaf);
-            }
+            Model(room, "Plante", "pottedPlant", position, 25f, 1.5f * scale,
+                ("wood", Mat("pot", "#B58A6C", 0.25f)), ("woodDark", Mat("trunk", "#7A6654", 0.2f)),
+                ("plant", Mat("leaf", "#6C8C70", 0.3f)));
         }
     }
 }

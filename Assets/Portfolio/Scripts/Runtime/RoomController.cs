@@ -46,6 +46,14 @@ namespace Portfolio
         public Color ambientGround = Color.gray;
         public Color backgroundColor = Color.black;
 
+        [Header("Arrivée dans la chambre")]
+        [Tooltip("Phrase affichée pendant le trajet vers cette chambre.")]
+        public string interlude;
+        [Tooltip("Objets qui se montent un à un quand la caméra arrive.")]
+        public Transform[] assemble;
+        [Tooltip("Le vaisseau en briques : il vole d'une chambre à la suivante.")]
+        public Transform keepsake;
+
         [Header("Final de la chambre")]
         public Transform[] finaleReveal;
         public Light[] finaleLights;

@@ -265,3 +265,37 @@
     color: rgba(236, 232, 224, 0.7);
     margin-top: 16px;
 }
+
+/* Passage d'une chambre à l'autre */
+
+.interlude {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 38%;
+    align-items: center;
+    opacity: 0;
+    translate: 0 18px;
+    transition-property: opacity, translate;
+    transition-duration: 0.9s;
+}
+
+.interlude--show {
+    opacity: 1;
+    translate: 0 0;
+}
+
+.interlude-kicker {
+    font-size: 18px;
+    letter-spacing: 6px;
+    color: rgb(217, 178, 106);
+    -unity-font-style: bold;
+    margin-bottom: 10px;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
+.interlude-title {
+    font-size: 68px;
+    -unity-font-style: bold;
+    text-shadow: 0 3px 16px rgba(0, 0, 0, 0.55);
+}

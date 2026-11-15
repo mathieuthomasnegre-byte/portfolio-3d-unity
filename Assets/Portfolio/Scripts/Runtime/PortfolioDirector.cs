@@ -16,7 +16,7 @@ namespace Portfolio
         public Light sun;
         public Camera cam;
         public Volume[] volumes;
-        public float transitionSeconds = 3.6f;
+        public float transitionSeconds = 5.2f;
 
         struct Pose
         {
@@ -55,6 +55,11 @@ namespace Portfolio
                 if (rc.finaleLights != null) foreach (Light l in rc.finaleLights) Dim(l);
                 if (rc.finaleEnable != null) foreach (Behaviour b in rc.finaleEnable) if (b) b.enabled = false;
             }
+            // Après les étapes : on retient la pose des objets qui se montent à l'arrivée, sans les masquer.
+            foreach (RoomController rc in rooms)
+                if (rc.assemble != null)
+                    foreach (Transform t in rc.assemble)
+                        if (t && !rest.ContainsKey(t)) rest[t] = new Pose { position = t.localPosition, scale = t.localScale };
         }
 
         void Start()
@@ -63,6 +68,7 @@ namespace Portfolio
             EnableRoomLights(0, true);
             for (int r = 1; r < rooms.Length; r++) EnableRoomLights(r, false);
             rig.Snap(rooms[0]);
+            rig.SetPullBack(0.22f);
 
             ui.EnsureBuilt();
             ui.Advance = Advance;
@@ -96,6 +102,7 @@ namespace Portfolio
         void Begin()
         {
             started = true;
+            StartCoroutine(rig.Settle(0.22f, 1.8f));
             ui.HideIntro();
             ui.SetChapter(rooms[0].chapter, rooms[0].title, rooms[0].subtitle);
             ui.SetProgress(-1, rooms[0].steps.Length);
@@ -156,15 +163,76 @@ namespace Portfolio
             ui.SetChapter(null, null, null);
             Highlight(null);
 
+            RoomController from = rooms[room], to = rooms[next];
+
+            // Le vaisseau de la chambre d'arrivée reste caché : celui qu'on quitte va voler jusqu'à sa place.
+            Transform ship = from.keepsake, landing = to.keepsake;
+            bool flight = ship && landing && ship.gameObject.activeInHierarchy;
+            Vector3 landingPosition = Vector3.zero, landingScale = Vector3.one;
+            Quaternion landingRotation = Quaternion.identity;
+            if (flight)
+            {
+                landingPosition = landing.position;
+                landingRotation = landing.rotation;
+                landingScale = landing.lossyScale;
+                landing.gameObject.SetActive(false);
+            }
+
+            // Les meubles de la chambre d'arrivée se monteront un à un.
+            var pieces = new List<Transform>();
+            if (to.assemble != null)
+                foreach (Transform t in to.assemble)
+                    if (t && t.gameObject.activeSelf && rest.ContainsKey(t))
+                    {
+                        t.localScale = Vector3.zero;
+                        pieces.Add(t);
+                    }
+
+            Light[] leaving = roomLights[room], arriving = roomLights[next];
+            float[] leavingLevel = new float[leaving.Length], arrivingLevel = new float[arriving.Length];
+            for (int i = 0; i < leaving.Length; i++) leavingLevel[i] = leaving[i].intensity;
+            for (int i = 0; i < arriving.Length; i++)
+            {
+                arrivingLevel[i] = arriving[i].intensity;
+                arriving[i].intensity = 0f;
+            }
             EnableRoomLights(next, true);
-            StartCoroutine(rig.MoveTo(rooms[next], transitionSeconds));
+
+            StartCoroutine(rig.MoveTo(to, transitionSeconds));
+            if (flight) StartCoroutine(Fly(ship, landing, landingPosition, landingRotation, landingScale, transitionSeconds * 0.94f));
+
+            bool titled = false, cleared = false, building = false;
+            Coroutine assembly = null;
             for (float t = 0f; t < 1f; t += Time.deltaTime / transitionSeconds)
             {
-                ApplyBlend(room, next, Mathf.SmoothStep(0f, 1f, t));
+                ApplyBlend(room, next, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.15f, 0.85f, t)));
+                float fadeOut = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.1f, 0.6f, t));
+                float fadeIn = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.4f, 0.9f, t));
+                for (int i = 0; i < leaving.Length; i++) leaving[i].intensity = leavingLevel[i] * fadeOut;
+                for (int i = 0; i < arriving.Length; i++) arriving[i].intensity = arrivingLevel[i] * fadeIn;
+
+                if (!titled && t > 0.12f)
+                {
+                    titled = true;
+                    ui.SetInterlude(to.chapter, to.interlude);
+                }
+                if (!cleared && t > 0.62f)
+                {
+                    cleared = true;
+                    ui.SetInterlude(null, null);
+                }
+                if (!building && t > 0.5f)
+                {
+                    building = true;
+                    assembly = StartCoroutine(Reveal(pieces, null, 0.075f, 0.6f));
+                }
                 yield return null;
             }
             ApplyBlend(next, next, 0f);
+            for (int i = 0; i < arriving.Length; i++) arriving[i].intensity = arrivingLevel[i];
             EnableRoomLights(room, false);
+            ui.SetInterlude(null, null);
+            if (assembly != null) yield return assembly;
 
             room = next;
             step = -1;
@@ -173,6 +241,42 @@ namespace Portfolio
             ui.SetProgress(-1, rc.steps.Length);
             ui.SetAction(NextLabel());
             busy = false;
+        }
+
+        /// <summary>Le vaisseau quitte sa chambre, passe au-dessus du mur et vient se poser dans la suivante.</summary>
+        IEnumerator Fly(Transform ship, Transform landing, Vector3 targetPosition, Quaternion targetRotation,
+            Vector3 targetScale, float seconds)
+        {
+            Floaty floaty = ship.GetComponent<Floaty>();
+            if (floaty) floaty.enabled = false;
+
+            Vector3 p0 = ship.position, p3 = targetPosition;
+            Vector3 p1 = p0 + new Vector3(1.5f, 5.5f, -1f);
+            Vector3 p2 = p3 + new Vector3(2.6f, 4.2f, -1.6f);
+            Quaternion r0 = ship.rotation;
+            Vector3 s0 = ship.localScale;
+            float ratio = targetScale.x / Mathf.Max(ship.lossyScale.x, 0.0001f);
+            Vector3 previous = p0;
+
+            for (float t = 0f; t < 1f; t += Time.deltaTime / seconds)
+            {
+                float e = t * t * (3f - 2f * t), i = 1f - e;
+                Vector3 point = i * i * i * p0 + 3f * i * i * e * p1 + 3f * i * e * e * p2 + e * e * e * p3;
+                ship.position = point;
+
+                // Le nez suit la trajectoire en vol, puis le vaisseau se réaligne pour se poser.
+                Vector3 heading = point - previous;
+                previous = point;
+                Quaternion along = heading.sqrMagnitude > 1e-8f ? Quaternion.LookRotation(heading.normalized, Vector3.up) : r0;
+                float cruise = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0f, 0.2f, t))
+                               * (1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.75f, 1f, t)));
+                ship.rotation = Quaternion.Slerp(Quaternion.Slerp(r0, targetRotation, e), along, cruise);
+                ship.localScale = Vector3.Lerp(s0, s0 * ratio, e);
+                yield return null;
+            }
+
+            ship.gameObject.SetActive(false);
+            landing.gameObject.SetActive(true);
         }
 
         /// <summary>Mélange l'ambiance de deux chambres (soleil, lumière ambiante, fond, post-traitement).</summary>

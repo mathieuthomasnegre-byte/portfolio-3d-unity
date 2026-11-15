@@ -43,13 +43,30 @@ namespace Portfolio
                 float e = t * t * t * (t * (6f * t - 15f) + 10f);
                 anchorPosition = Vector3.Lerp(fromPosition, toPosition, e);
                 anchorLook = Vector3.Lerp(fromLook, toLook, e);
-                pullBack = Mathf.Sin(t * Mathf.PI) * 0.12f;
+                // Recul et prise de hauteur au milieu du trajet : on quitte une chambre avant d'entrer dans l'autre.
+                float arc = Mathf.Sin(t * Mathf.PI);
+                pullBack = arc * 0.3f;
+                anchorPosition += Vector3.up * (arc * 1.1f);
                 yield return null;
             }
             anchorPosition = toPosition;
             anchorLook = toLook;
             pullBack = 0f;
         }
+
+        /// <summary>Entrée en scène : la caméra part de plus loin et se pose sur son cadrage.</summary>
+        public IEnumerator Settle(float from, float seconds)
+        {
+            for (float t = 0f; t < 1f; t += Time.deltaTime / seconds)
+            {
+                float e = 1f - Mathf.Pow(1f - t, 3f);
+                pullBack = Mathf.Lerp(from, 0f, e);
+                yield return null;
+            }
+            pullBack = 0f;
+        }
+
+        public void SetPullBack(float value) => pullBack = value;
 
         void LateUpdate()
         {
