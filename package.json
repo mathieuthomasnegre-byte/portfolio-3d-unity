@@ -7,10 +7,10 @@
   "author": "Mathieu Negre",
   "type": "commonjs",
   "scripts": {
-    "start": "node serve.js",
-    "serve": "node serve.js"
+    "start": "node --env-file-if-exists=.env serve.js",
+    "serve": "node --env-file-if-exists=.env serve.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   }
 }

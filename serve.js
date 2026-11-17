@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 
 const root = path.join(__dirname, "Build", "WebGL");
-const port = Number(process.argv[2]) || 8123;
+const port = Number(process.argv[2]) || Number(process.env.PORT) || 8123;
 const types = {
   ".html": "text/html; charset=utf-8",
   ".js": "application/javascript",

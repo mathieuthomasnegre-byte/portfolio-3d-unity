@@ -5,7 +5,7 @@ Portfolio interactif de Mathieu Negre : trois chambres, trois âges (enfant, ado
 ## Prérequis
 
 - Unity **6000.6.9f1** (voir `ProjectSettings/ProjectVersion.txt`), avec le module WebGL.
-- Node.js 18 ou plus récent, pour le serveur local.
+- Node.js 22 ou plus récent, pour le serveur local.
 - Le pack gratuit **Cute Furniture Free** d'ithappy, à importer depuis l'Asset Store dans `Assets/ithappy/`. Il n'est pas inclus dans le dépôt : sa licence (Unity Asset Store EULA) interdit de redistribuer ses fichiers.
 
 Le mobilier Kenney Furniture Kit est inclus (licence CC0, voir `Assets/Kenney Furniture Kit/License.txt`).
