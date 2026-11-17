@@ -17435,7 +17435,7 @@ MonoBehaviour:
   - {fileID: 1178749645}
   - {fileID: 1656456113}
   - {fileID: 60376864}
-  transitionSeconds: 5.2
+  transitionSeconds: 2.6
   outline: {fileID: 2100000, guid: 35468278ebdd5e54c8360eb75b69a2f5, type: 2}
   sfx: {fileID: 593730335}
   brickClicks:

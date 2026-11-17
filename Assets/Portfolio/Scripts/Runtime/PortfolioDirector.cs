@@ -16,7 +16,7 @@ namespace Portfolio
         public Light sun;
         public Camera cam;
         public Volume[] volumes;
-        public float transitionSeconds = 5.2f;
+        public float transitionSeconds = 2.6f;
         [Tooltip("Contour lumineux posé sur l'objet présenté (shader Portfolio/Outline).")]
         public Material outline;
 
@@ -288,7 +288,7 @@ namespace Portfolio
                 if (!building && t > 0.66f)
                 {
                     building = true;
-                    assembly = StartCoroutine(Reveal(pieces, null, 0.075f, 0.6f));
+                    assembly = StartCoroutine(Reveal(pieces, null, 0.0375f, 0.3f));
                 }
                 yield return null;
             }
