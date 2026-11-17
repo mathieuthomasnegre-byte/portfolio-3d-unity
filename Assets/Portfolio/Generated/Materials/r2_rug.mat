@@ -22,16 +22,26 @@ Material:
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
-    m_TexEnvs: []
+    m_TexEnvs:
+    - _BaseMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _ClearCoatMask: 0
+    - _ClearCoatOn: 0
+    - _ClearCoatSmoothness: 0.9
+    - _Gradient: 0.24
     - _Highlight: 0
+    - _MapSaturation: 1
     - _Metallic: 0
     - _RimPower: 3
     - _RimStrength: 0.22
     - _Smoothness: 0.05
     - _Surface: 3
     - _SurfaceStrength: 1
+    - _Transmission: 0
     m_Colors:
     - _BaseColor: {r: 0.23529412, g: 0.2627451, b: 0.32156864, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}

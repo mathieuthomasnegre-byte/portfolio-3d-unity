@@ -26,11 +26,11 @@ Material:
     m_Ints: []
     m_Floats:
     - _DiscSize: 0.04
-    - _Intensity: 1
+    - _Intensity: 0.95
     - _Stars: 0.9
     m_Colors:
     - _Bottom: {r: 0.18039216, g: 0.21960784, b: 0.3372549, a: 1}
-    - _DiscColor: {r: 2.0015688, g: 2.0533333, b: 2.2, a: 2.2}
+    - _DiscColor: {r: 1.3647059, g: 1.4, b: 1.5, a: 1.5}
     - _DiscPos: {r: 0.6, g: 0.66, b: 0, a: 0}
     - _Top: {r: 0.078431375, g: 0.105882354, b: 0.17254902, a: 1}
   m_BuildTextureStacks: []

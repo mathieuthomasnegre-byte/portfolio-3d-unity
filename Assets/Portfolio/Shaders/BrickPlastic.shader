@@ -5,6 +5,9 @@ Shader "Portfolio/BrickPlastic"
     Properties
     {
         _BaseColor("Base Color", Color) = (0.8, 0.8, 0.8, 1)
+        _BaseMap("Base Map", 2D) = "white" {}
+        _MapSaturation("Base Map Saturation", Range(0, 1.5)) = 1
+        _Gradient("Vertical Gradient (uv.y)", Range(0, 0.6)) = 0
         _Smoothness("Smoothness", Range(0, 1)) = 0.45
         _Metallic("Metallic", Range(0, 1)) = 0
         [HDR] _EmissionColor("Emission", Color) = (0, 0, 0, 1)
@@ -15,6 +18,12 @@ Shader "Portfolio/BrickPlastic"
         _Highlight("Highlight", Range(0, 1)) = 0
         _Surface("Surface (0 uni, 1 parquet, 2 bois, 3 tissu, 4 mur)", Float) = 0
         _SurfaceStrength("Surface Strength", Range(0, 2)) = 1
+        // Vernis (parquet, bois laqué) : seconde couche de reflets nets par-dessus la matière.
+        [Toggle(_CLEARCOAT)] _ClearCoatOn("Clear Coat", Float) = 0
+        _ClearCoatMask("Clear Coat Mask", Range(0, 1)) = 0
+        _ClearCoatSmoothness("Clear Coat Smoothness", Range(0, 1)) = 0.9
+        // Lumière qui traverse les matières fines (rideaux, abat-jour) quand elles sont à contre-jour.
+        _Transmission("Transmission", Range(0, 1)) = 0
     }
 
     SubShader
@@ -36,7 +45,16 @@ Shader "Portfolio/BrickPlastic"
             half _Highlight;
             half _Surface;
             half _SurfaceStrength;
+            half _MapSaturation;
+            half _Gradient;
+            half _ClearCoatMask;
+            half _ClearCoatSmoothness;
+            half _Transmission;
         CBUFFER_END
+
+        // Image de couleurs facultative (modèles importés avec leur nuancier) ; blanche par défaut.
+        TEXTURE2D(_BaseMap);
+        SAMPLER(sampler_BaseMap);
         ENDHLSL
 
         Pass
@@ -50,6 +68,10 @@ Shader "Portfolio/BrickPlastic"
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
             #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
+            #pragma multi_compile_fragment _ _REFLECTION_PROBE_BLENDING
+            #pragma multi_compile_fragment _ _REFLECTION_PROBE_BOX_PROJECTION
+            #pragma multi_compile_fragment _ _REFLECTION_PROBE_ATLAS
+            #pragma shader_feature_local_fragment _CLEARCOAT
             #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
             #pragma multi_compile_fragment _ _SCREEN_SPACE_OCCLUSION
             #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
@@ -61,6 +83,7 @@ Shader "Portfolio/BrickPlastic"
             {
                 float4 positionOS : POSITION;
                 float3 normalOS : NORMAL;
+                float2 uv : TEXCOORD0;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -72,6 +95,7 @@ Shader "Portfolio/BrickPlastic"
                 half fogFactor : TEXCOORD2;
                 float3 patternPos : TEXCOORD3;
                 half3 normalOS : TEXCOORD4;
+                float2 uv : TEXCOORD5;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
                 UNITY_VERTEX_OUTPUT_STEREO
             };
@@ -97,12 +121,15 @@ Shader "Portfolio/BrickPlastic"
                 return saturate(1.0 - fwidth(coordinate) * 1.4);
             }
 
-            // uv en mètres sur la face. Renvoie la teinte, le relief (en mètres) et la brillance de la matière.
-            void SurfacePattern(float2 uv, out half tint, out float height, out half gloss)
+            // uv en mètres sur la face. Renvoie la teinte, le relief (en mètres), la brillance de la matière
+            // et l'occlusion des creux (joints, trame) où la lumière ambiante et les reflets pénètrent mal.
+            void SurfacePattern(float2 uv, out half tint, out float height, out half gloss, out half cavity)
             {
                 tint = 1.0;
                 height = 0.0;
-                gloss = 1.0;
+                cavity = 1.0;
+                // Usure : la brillance varie doucement d'un endroit à l'autre, comme sur un objet manipulé.
+                gloss = 0.9 + 0.2 * Noise(uv * 2.3 + 17.0);
 
                 if (_Surface < 0.5) return;
 
@@ -124,7 +151,8 @@ Shader "Portfolio/BrickPlastic"
                                   + Noise(float2(q.x * 8.0, q.y * 150.0 + id * 7.0)) * 0.4 * Fine(q.y * 150.0);
                     tint = (0.9 + 0.2 * id) * (0.93 + 0.14 * grain) * lerp(0.7, 1.0, joint);
                     height = joint * 0.0025 + grain * 0.0003;
-                    gloss = lerp(0.5, 1.0, joint) * (0.88 + 0.24 * grain);
+                    gloss *= lerp(0.5, 1.0, joint) * (0.88 + 0.24 * grain);
+                    cavity = lerp(0.45, 1.0, lerp(1.0, joint, jointDepth));
                 }
                 else if (_Surface < 2.5)
                 {
@@ -133,7 +161,7 @@ Shader "Portfolio/BrickPlastic"
                                   + Noise(float2(uv.x * 10.0, uv.y * 170.0)) * 0.4 * Fine(uv.y * 170.0);
                     tint = 0.92 + 0.16 * grain;
                     height = grain * 0.0003;
-                    gloss = 0.86 + 0.28 * grain;
+                    gloss *= 0.86 + 0.28 * grain;
                 }
                 else if (_Surface < 3.5)
                 {
@@ -143,7 +171,8 @@ Shader "Portfolio/BrickPlastic"
                     float cloud = Noise(uv * 5.0) * 0.65 + Noise(uv * 17.0) * 0.35;
                     tint = 0.94 + 0.1 * cloud + 0.05 * weave;
                     height = weave * 0.0007 + cloud * 0.0006;
-                    gloss = 0.75;
+                    gloss *= 0.75;
+                    cavity = 0.9 + 0.1 * saturate(weave * 0.5 + 0.5);
                 }
                 else
                 {
@@ -155,7 +184,16 @@ Shader "Portfolio/BrickPlastic"
 
                 tint = lerp(1.0, tint, _SurfaceStrength);
                 gloss = lerp(1.0, gloss, _SurfaceStrength);
+                cavity = lerp(1.0, cavity, saturate(_SurfaceStrength));
                 height *= _SurfaceStrength;
+            }
+
+            // Lumière reçue par l'autre face d'une matière fine : diffusée à travers, surtout dans l'axe du regard.
+            half3 Transmitted(InputData inputData, Light light)
+            {
+                half back = saturate(-dot(inputData.normalWS, light.direction));
+                half forward = pow(saturate(dot(inputData.viewDirectionWS, -light.direction)), 4.0);
+                return light.color * light.distanceAttenuation * light.shadowAttenuation * (back * 0.6 + forward * 0.8);
             }
 
             Varyings vert(Attributes input)
@@ -176,6 +214,7 @@ Shader "Portfolio/BrickPlastic"
                     length(UNITY_MATRIX_M._m02_m12_m22));
                 output.patternPos = input.positionOS.xyz * objectScale;
                 output.normalOS = input.normalOS;
+                output.uv = input.uv;
                 return output;
             }
 
@@ -196,7 +235,8 @@ Shader "Portfolio/BrickPlastic"
                 half tint;
                 float height;
                 half gloss;
-                SurfacePattern(uv, tint, height, gloss);
+                half cavity;
+                SurfacePattern(uv, tint, height, gloss, cavity);
 
                 // Relief : la normale s'incline selon la pente de la hauteur (dérivées écran).
                 float3 dpx = ddx(input.positionWS), dpy = ddy(input.positionWS);
@@ -219,21 +259,48 @@ Shader "Portfolio/BrickPlastic"
                 half pulse = 0.6 + 0.4 * sin(_Time.y * 3.2);
 
                 SurfaceData surface = (SurfaceData)0;
-                surface.albedo = _BaseColor.rgb * tint;
+                // Nuancier du modèle, plus ou moins saturé pour s'accorder à l'ambiance de la chambre.
+                half3 map = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv).rgb;
+                map = lerp(dot(map, half3(0.299, 0.587, 0.114)).xxx, map, _MapSaturation);
+                // Dégradé peint des objets fabriqués par code (uv.y = hauteur relative) : plus sombre en bas,
+                // plus clair en haut, comme le nuancier des modèles ithappy.
+                half shade = lerp(1.0 - _Gradient, 1.0 + _Gradient * 0.35, saturate(input.uv.y));
+                surface.albedo = _BaseColor.rgb * tint * map * shade;
                 surface.metallic = _Metallic;
                 surface.specular = half3(0, 0, 0);
                 surface.smoothness = saturate(_Smoothness * gloss);
-                surface.occlusion = 1;
+                surface.occlusion = cavity;
                 surface.alpha = 1;
+            #if defined(_CLEARCOAT)
+                // Le vernis s'use avec la matière : moins de reflets dans les joints et les zones mates.
+                surface.clearCoatMask = _ClearCoatMask * saturate(gloss);
+                surface.clearCoatSmoothness = _ClearCoatSmoothness;
+            #endif
+                // Mise en avant : l'objet présenté s'éclaire franchement, surtout sur ses bords.
                 surface.emission = _EmissionColor.rgb
-                    + _HighlightColor.rgb * _Highlight * pulse * (0.07 + fresnel * 0.9);
+                    + _HighlightColor.rgb * _Highlight * pulse * (0.16 + fresnel * 1.4);
 
                 half4 color = UniversalFragmentPBR(inputData, surface);
 
-                // Liseré : une fine lumière sur les arêtes, teintée par la lumière qui atteint la surface.
                 Light mainLight = GetMainLight(inputData.shadowCoord);
-                half3 rimLight = inputData.bakedGI + mainLight.color * mainLight.shadowAttenuation * 0.5;
-                color.rgb += _RimColor.rgb * rimLight * fresnel * _RimStrength;
+                if (_Transmission > 0.001)
+                {
+                    // Ombres lues derrière l'épaisseur de la matière : sa propre face ne doit pas la masquer.
+                    float3 behind = inputData.positionWS - inputData.normalWS * 0.1;
+                    half3 through = Transmitted(inputData, GetMainLight(TransformWorldToShadowCoord(behind)));
+                #if defined(_ADDITIONAL_LIGHTS)
+                    uint lightCount = GetAdditionalLightsCount();
+                    LIGHT_LOOP_BEGIN(lightCount)
+                        through += Transmitted(inputData, GetAdditionalLight(lightIndex, behind, inputData.shadowMask));
+                    LIGHT_LOOP_END
+                #endif
+                    color.rgb += through * surface.albedo * _Transmission;
+                }
+
+                // Reflet du tissu (velours) : un voile sur les bords, à proportion de la lumière qui touche la face.
+                half wrap = saturate(dot(inputData.normalWS, mainLight.direction) * 0.5 + 0.5);
+                half3 rimLight = inputData.bakedGI + mainLight.color * mainLight.shadowAttenuation * wrap;
+                color.rgb += _RimColor.rgb * lerp(1.0, surface.albedo, 0.5) * rimLight * fresnel * _RimStrength * cavity;
 
                 color.rgb = MixFog(color.rgb, inputData.fogCoord);
                 return half4(color.rgb, 1);

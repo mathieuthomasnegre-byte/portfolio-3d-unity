@@ -22,3 +22,42 @@
 .vscode/
 crashlytics-build.properties
 /Data/
+
+# Assets de l'Asset Store (licence Unity : redistribution interdite) : à réimporter depuis le Package Manager
+/Assets/ithappy/
+/Assets/ithappy.meta
+/[Aa]ssets/AssetStoreTools*
+
+# Fichiers Unity générés
+/[Rr]ecordings/
+/[Ee]xportedObj/
+sysinfo.txt
+*.apk
+*.aab
+*.unitypackage
+*.tmp
+.utmp/
+
+# Node.js (serveur local serve.js)
+node_modules/
+npm-debug.log*
+*.log
+
+# Secrets : clés API, variables d'environnement, certificats, identifiants
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.keystore
+*.jks
+secrets.*
+credentials*.json
+
+# Système
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/

@@ -1,0 +1,16 @@
+{
+  "name": "portfolio-3d-unity",
+  "version": "0.1.0",
+  "description": "Portfolio interactif en 3D de Mathieu Negre, réalisé avec Unity (export WebGL) : trois chambres, trois âges, un parcours à assembler.",
+  "private": true,
+  "license": "UNLICENSED",
+  "author": "Mathieu Negre",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node serve.js",
+    "serve": "node serve.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

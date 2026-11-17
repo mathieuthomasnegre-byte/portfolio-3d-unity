@@ -25,8 +25,12 @@ Shader "Portfolio/Screen"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile_fragment _ _REFLECTION_PROBE_BLENDING
+            #pragma multi_compile_fragment _ _REFLECTION_PROBE_BOX_PROJECTION
+            #pragma multi_compile_fragment _ _REFLECTION_PROBE_ATLAS
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Fog.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
                 half4 _BgColor;
@@ -40,6 +44,7 @@ Shader "Portfolio/Screen"
             struct Attributes
             {
                 float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
                 float2 uv : TEXCOORD0;
             };
 
@@ -48,12 +53,17 @@ Shader "Portfolio/Screen"
                 float4 positionCS : SV_POSITION;
                 float2 uv : TEXCOORD0;
                 half fogFactor : TEXCOORD1;
+                float3 positionWS : TEXCOORD2;
+                half3 normalWS : TEXCOORD3;
             };
 
             Varyings vert(Attributes input)
             {
                 Varyings output;
-                output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
+                VertexPositionInputs pos = GetVertexPositionInputs(input.positionOS.xyz);
+                output.positionCS = pos.positionCS;
+                output.positionWS = pos.positionWS;
+                output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.uv = input.uv;
                 output.fogFactor = ComputeFogFactor(output.positionCS.z);
                 return output;
@@ -198,7 +208,7 @@ Shader "Portfolio/Screen"
                 return col;
             }
 
-            half4 frag(Varyings input) : SV_Target
+            half4 frag(Varyings input, bool front : SV_IsFrontFace) : SV_Target
             {
                 float2 uv = input.uv;
                 float t = _Time.y;
@@ -222,6 +232,13 @@ Shader "Portfolio/Screen"
                 half3 off = half3(0.012, 0.014, 0.018);
                 half3 col = lerp(off, content * _Intensity * scan * (0.75 + 0.25 * vignette), mask * saturate(_Power * 1.4));
                 col += _ColorA.rgb * flash * 2.0;
+
+                // Vitre de l'écran : elle reflète la pièce (sonde de réflexion), surtout vue de biais.
+                half3 normal = normalize(input.normalWS) * (front ? 1.0 : -1.0);
+                half3 view = GetWorldSpaceNormalizeViewDir(input.positionWS);
+                half fresnel = 0.04 + 0.96 * pow(1.0 - saturate(dot(normal, view)), 5.0);
+                float2 screenUV = GetNormalizedScreenSpaceUV(input.positionCS);
+                col += GlossyEnvironmentReflection(reflect(-view, normal), input.positionWS, 0.12, 1.0, screenUV) * fresnel;
 
                 col = MixFog(col, input.fogFactor);
                 return half4(col, 1);

@@ -1,21 +1,30 @@
+﻿using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace Portfolio.EditorTools
 {
-    // Éléments réutilisés d'une chambre à l'autre : murs, fenêtre, lit, écrans, vaisseau en briques...
+    // Éléments réutilisés d'une chambre à l'autre : murs, fenêtre, meubles du paquet ithappy, écrans, vaisseau en briques...
     public static partial class PortfolioBuilder
     {
-        static readonly string[] BookColors =
-            { "#8A6F5E", "#5F7F9E", "#B5574F", "#6E8A78", "#D0B26C", "#E4E0D6", "#6B5F7E", "#444A52", "#C59688" };
+        // Couleurs du paquet de meubles, reprises pour les objets fabriqués par code : tout reste dans la même famille.
+        const string CuteWood = "#EFA35F", CuteWoodLight = "#F8CB8C", CuteWoodDark = "#7A4E44", CuteMetal = "#9DB2C1",
+            CuteCream = "#FFF4DC", CuteRed = "#E9504F", CuteTeal = "#52BDBB", CuteBlue = "#4F8FE8", CuteYellow = "#FFC95C",
+            CuteGreen = "#4DBE6E", CuteOrange = "#FF8A3D", CutePurple = "#8E63E6", CutePink = "#F27BB0";
+
+        static readonly Dictionary<string, string> cuteModels = new Dictionary<string, string>();
+        // Matériau des meubles ithappy pour la chambre en cours de construction.
+        static Material cute;
 
         static RoomController NewRoom(int index, string name)
         {
             GameObject go = Group(null, name, new Vector3(index * RoomSpacing, 0f, 0f));
             RoomController room = go.AddComponent<RoomController>();
-            room.cameraAnchor = Group(go.transform, "Ancre caméra", new Vector3(4.7f, 4.5f, -9.4f)).transform;
-            room.lookTarget = Group(go.transform, "Cible caméra", new Vector3(-0.35f, 1.2f, 0.3f)).transform;
+            // Visée un peu au-dessus du centre : la chambre descend dans l'image et laisse de la place au titre.
+            room.cameraAnchor = Group(go.transform, "Ancre caméra", new Vector3(4.9f, 4.95f, -9.9f)).transform;
+            room.lookTarget = Group(go.transform, "Cible caméra", new Vector3(-0.35f, 1.6f, 0.3f)).transform;
             return room;
         }
 
@@ -28,12 +37,12 @@ namespace Portfolio.EditorTools
 
             Box(shell, "Sol", new Vector3(0f, -0.15f, 0.1f), new Vector3(8.4f, 0.3f, 6.8f), floor, 0.03f);
             Box(shell, "Socle", new Vector3(0f, -0.45f, 0.1f), new Vector3(8.8f, 0.3f, 7.2f), Mat("plinth", "#2B2E33", 0.3f), 0.04f);
-            Box(shell, "Mur gauche", new Vector3(-4.1f, height * 0.5f, 0.1f), new Vector3(0.2f, height, 6.6f), wall, 0.02f);
-
-            Box(shell, "Mur fond gauche", new Vector3((-4.15f + xMin) * 0.5f, height * 0.5f, zWall), new Vector3(xMin + 4.15f, height, 0.2f), wall, 0.02f);
-            Box(shell, "Mur fond droit", new Vector3((xMax + 4f) * 0.5f, height * 0.5f, zWall), new Vector3(4f - xMax, height, 0.2f), wall, 0.02f);
-            Box(shell, "Mur sous fenêtre", new Vector3((xMin + xMax) * 0.5f, yMin * 0.5f, zWall), new Vector3(xMax - xMin, yMin, 0.2f), wall, 0.02f);
-            Box(shell, "Mur sur fenêtre", new Vector3((xMin + xMax) * 0.5f, (yMax + height) * 0.5f, zWall), new Vector3(xMax - xMin, height - yMax, 0.2f), wall, 0.02f);
+            // Murs d'un seul tenant, sans arrondi : aucun joint visible entre les panneaux.
+            Mesh side = CachedMesh("wall_left", () => MeshLib.WallWithWindow(-3.3f, 3.3f, height, 0.2f, 0f, 0f, 0f, 0f));
+            Shape(shell, "Mur gauche", side, wall, new Vector3(-4.1f, 0f, 0.1f), new Vector3(0f, -90f, 0f));
+            Mesh back = CachedMesh($"wall_back_{xMin:0.##}_{xMax:0.##}_{yMin:0.##}_{yMax:0.##}",
+                () => MeshLib.WallWithWindow(-4.15f, 4f, height, 0.2f, xMin, xMax, yMin, yMax));
+            Shape(shell, "Mur du fond", back, wall, new Vector3(0f, 0f, zWall));
 
             Box(shell, "Plinthe fond", new Vector3(0f, 0.06f, 3.18f), new Vector3(8f, 0.12f, 0.04f), trim, 0.01f);
             Box(shell, "Plinthe gauche", new Vector3(-3.98f, 0.06f, 0f), new Vector3(0.04f, 0.12f, 6.4f), trim, 0.01f);
@@ -131,144 +140,263 @@ namespace Portfolio.EditorTools
             return light;
         }
 
-        /// <summary>Lit contre le mur gauche, tête au mur du fond : il reste à la même place dans les trois chambres.</summary>
-        static void Bed(Transform room, Material frame, Material mattress, Material blanket, Material pillow)
-        {
-            Model(room, "Lit", "bedSingle", new Vector3(-3.35f, 0f, 2.1f), 0f, 2.1f,
-                ("wood", frame), ("metal", frame), ("carpetWhite", mattress), ("carpet", blanket));
-        }
+        // ------------------------------------------------------------------ Meubles du paquet ithappy
 
-        static void Bedside(Transform room, Material body, string shadeHex, float shadeGlow, string lightHex, float lightIntensity)
+        /// <summary>
+        /// Matériau des meubles « Cute Furniture » d'ithappy (Unity Asset Store) : leur nuancier de couleurs,
+        /// teinté et plus ou moins saturé pour s'accorder à l'ambiance de la chambre.
+        /// </summary>
+        static Material CuteMat(string name, string tintHex, float saturation)
         {
-            Transform table = Group(room, "Table de chevet", new Vector3(-2.35f, 0f, 2.85f)).transform;
-            Material metal = Mat("metal_dark", "#3A3F47", 0.6f, 0.7f);
-            Model(table, "Meuble", "cabinetBedDrawer", Vector3.zero, 0f, 0.56f,
-                ("wood", body), ("_defaultMat", body), ("metal", metal));
-            Model(table, "Lampe", "lampRoundTable", new Vector3(0.06f, 0.53f, 0.04f), 0f, 0.5f,
-                ("metal", metal), ("lamp", Mat("shade_" + shadeHex, "#EDE3D0", 0.2f, 0f, shadeHex, shadeGlow)));
-            PointLight(table, "Lumière de chevet", new Vector3(0.05f, 0.95f, -0.2f), lightHex, lightIntensity, 4.5f);
+            if (materials.TryGetValue(name, out Material existing)) return existing;
+            string texturePath = CuteFolder + "/Textures/Textures_4.png";
+            Texture2D swatch = AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath);
+            if (!swatch) throw new System.InvalidOperationException("Texture introuvable : " + texturePath);
+
+            var material = new Material(plasticShader) { name = name };
+            material.SetColor("_BaseColor", Hex(tintHex));
+            material.SetTexture("_BaseMap", swatch);
+            material.SetFloat("_MapSaturation", saturation);
+            material.SetFloat("_Smoothness", 0.28f);
+            material.SetFloat("_Metallic", 0f);
+            material.SetFloat("_RimStrength", 0f);
+            // Laque légère du mobilier : reflets doux de la pièce sur les plateaux et les façades.
+            ClearCoat(material, 0.25f, 0.75f);
+            return Register(name, material);
         }
 
         /// <summary>
-        /// Modèle du « Furniture Kit » de Kenney (kenney.nl, licence CC0), importé depuis le paquet Unity du kit
-        /// dans « Assets/Kenney Furniture Kit ». Il est posé sur son point bas central.
-        /// size : plus grande dimension voulue, en mètres. palette : matériau du kit → matériau de la chambre.
+        /// Pose un modèle du paquet ithappy (dossier « Assets/ithappy »). Le modèle garde son pivot d'origine
+        /// (au sol ; au dos pour les meubles à adosser) et regarde vers +z quand yaw vaut 0.
         /// </summary>
-        static GameObject Model(Transform parent, string name, string file, Vector3 position, float yaw, float size,
-            params (string slot, Material material)[] palette)
+        static GameObject Cute(Transform parent, string name, string file, Vector3 position, float yaw = 0f,
+            Vector3? scale = null)
         {
-            return PlaceModel(parent, name, file, position, yaw, Vector3.one * size, true, palette);
-        }
-
-        /// <summary>Même modèle, étiré pour occuper exactement largeur × hauteur × profondeur (bureaux, tapis, tables).</summary>
-        static GameObject ModelFit(Transform parent, string name, string file, Vector3 position, float yaw, Vector3 size,
-            params (string slot, Material material)[] palette)
-        {
-            return PlaceModel(parent, name, file, position, yaw, size, false, palette);
-        }
-
-        static GameObject PlaceModel(Transform parent, string name, string file, Vector3 position, float yaw, Vector3 size,
-            bool uniform, (string slot, Material material)[] palette)
-        {
-            string path = $"{KitFolder}/{file}.fbx";
-            GameObject asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-            if (!asset) throw new System.InvalidOperationException("Modèle introuvable : " + path);
+            if (cuteModels.Count == 0)
+                foreach (string guid in AssetDatabase.FindAssets("t:Model", new[] { CuteFolder + "/Meshes" }))
+                {
+                    string found = AssetDatabase.GUIDToAssetPath(guid);
+                    cuteModels[Path.GetFileNameWithoutExtension(found)] = found;
+                }
+            if (!cuteModels.TryGetValue(file, out string path))
+                throw new System.InvalidOperationException("Modèle ithappy introuvable : " + file);
 
             GameObject holder = Group(parent, name, position, new Vector3(0f, yaw, 0f));
-            GameObject model = Object.Instantiate(asset);
-            model.name = file;
-            model.transform.position = Vector3.zero;
-
-            Renderer[] renderers = model.GetComponentsInChildren<Renderer>();
-            Bounds bounds = renderers[0].bounds;
-            foreach (Renderer r in renderers) bounds.Encapsulate(r.bounds);
-
-            Vector3 scale;
-            if (uniform)
-                scale = Vector3.one * (size.x / Mathf.Max(bounds.size.x, Mathf.Max(bounds.size.y, bounds.size.z)));
-            else
-                scale = new Vector3(size.x / Mathf.Max(bounds.size.x, 0.0001f), size.y / Mathf.Max(bounds.size.y, 0.0001f),
-                    size.z / Mathf.Max(bounds.size.z, 0.0001f));
-
-            // L'échelle est portée par un parent aligné sur les axes de la chambre : le modèle peut garder
-            // la rotation que lui donne l'import sans être déformé de travers.
+            // L'échelle est portée par un parent aligné sur le meuble : le modèle garde la rotation de son import.
             GameObject fit = Group(holder.transform, "Échelle", Vector3.zero);
-            fit.transform.localScale = scale;
+            fit.transform.localScale = scale ?? Vector3.one;
+            GameObject model = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(path));
+            model.name = file;
             model.transform.SetParent(fit.transform, false);
-            model.transform.localPosition = -new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
+            model.transform.localPosition = Vector3.zero;
 
-            foreach (Renderer r in renderers)
+            foreach (Renderer r in model.GetComponentsInChildren<Renderer>())
             {
                 Material[] slots = r.sharedMaterials;
-                for (int i = 0; i < slots.Length; i++) slots[i] = KitMaterial(slots[i] ? slots[i].name : "", palette);
+                for (int i = 0; i < slots.Length; i++) slots[i] = cute;
                 r.sharedMaterials = slots;
             }
             return holder;
         }
 
-        static Material KitMaterial(string slot, (string slot, Material material)[] palette)
+        static GameObject Cute(Transform parent, string name, string file, Vector3 position, float yaw, float scale)
         {
-            foreach ((string key, Material material) in palette)
-                if (key == slot) return material;
-            switch (slot)
-            {
-                case "wood": return Mat("kit_wood", "#B79E7B", 0.3f);
-                case "woodDark": return Mat("kit_wood_dark", "#7A6654", 0.25f);
-                case "metal": return Mat("steel", "#B4B9BF", 0.7f, 0.85f);
-                case "metalLight": return Mat("aluminium", "#B9BEC4", 0.6f, 0.7f);
-                case "metalMedium": return Mat("kit_metal_medium", "#6B7078", 0.5f, 0.5f);
-                case "metalDark": return Mat("metal_dark", "#3A3F47", 0.6f, 0.7f);
-                case "carpet": return Mat("kit_fabric", "#8A8378", 0.1f);
-                case "carpetWhite": return Mat("mattress", "#EDE9E0", 0.1f);
-                case "carpetDarker": return Mat("kit_fabric_dark", "#6E685F", 0.1f);
-                case "carpetBlue": return Mat("kit_fabric_blue", "#6F8AA0", 0.1f);
-                case "_defaultMat": return Mat("kit_default", "#D9D6D0", 0.2f);
-                case "plant": return Mat("leaf", "#6C8C70", 0.3f);
-                case "fur": return Mat("kit_fur", "#B08D6E", 0.05f);
-                case "lamp": return Mat("shade_cream", "#EDE3D0", 0.2f, 0f, "#FFD9A8", 0.6f);
-                default:
-                    Debug.LogWarning("[Portfolio] Matériau de kit inconnu : " + slot + " (" + palette.Length + ")");
-                    return Mat("kit_default", "#D9D6D0", 0.2f);
-            }
+            return Cute(parent, name, file, position, yaw, Vector3.one * scale);
         }
 
-        static void Books(Transform parent, Vector3 start, bool alongZ, int count, float maxHeight, float depth = 0.2f)
+        /// <summary>Lit simple contre le mur gauche, tête au mur du fond.</summary>
+        static void SingleBed(Transform room)
         {
-            float offset = 0f;
-            for (int i = 0; i < count; i++)
-            {
-                float thickness = Rand(0.035f, 0.065f), height = Rand(maxHeight * 0.72f, maxHeight);
-                string hex = Pick(BookColors);
-                Material material = Mat("book_" + hex, hex, 0.2f);
-                Vector3 along = alongZ ? Vector3.forward : Vector3.right;
-                Vector3 size = alongZ ? new Vector3(depth, height, thickness) : new Vector3(thickness, height, depth);
-                Box(parent, "Livre", start + along * (offset + thickness * 0.5f) + Vector3.up * (height * 0.5f), size, material, 0.004f);
-                offset += thickness + 0.004f;
-            }
+            Cute(room, "Lit", "Bed_07", new Vector3(-3.26f, 0f, 2.23f), 180f);
         }
 
-        /// <summary>Écran sur pied. Renvoie le rendu de la dalle pour l'allumer à son étape.</summary>
+        /// <summary>Chevet adossé au mur du fond, avec son tiroir et une lampe ronde.</summary>
+        static void Bedside(Transform room, float x, string shadeHex, string lightHex, float lightIntensity)
+        {
+            // Le groupe est retourné : à l'intérieur, +z pointe vers la pièce.
+            Transform table = Group(room, "Table de chevet", new Vector3(x, 0f, 3.19f), new Vector3(0f, 180f, 0f)).transform;
+            Cute(table, "Meuble", "Nightstand_02", Vector3.zero);
+            Cute(table, "Tiroir", "Nightstand_02_Door", new Vector3(0f, 0.355f, 0.34f));
+            TableLamp(table, new Vector3(0.02f, 0.57f, 0.2f), shadeHex);
+            // Lumière placée devant la lampe, loin du mur : elle éclaire le chevet sans brûler le mur.
+            PointLight(table, "Lumière de chevet", new Vector3(0f, 1.15f, 0.8f), lightHex, lightIntensity, 3.6f, true);
+        }
+
+        /// <summary>Lampe de table ronde, dans le style du paquet de meubles. L'abat-jour luit doucement.</summary>
+        static void TableLamp(Transform parent, Vector3 position, string shadeHex)
+        {
+            Transform lamp = Group(parent, "Lampe", position).transform;
+            Material foot = Mat("cute_wood_dark", CuteWoodDark, 0.3f);
+            Puck(lamp, "Pied", Vector3.zero, 0.075f, 0.035f, 0.015f, foot);
+            Cyl(lamp, "Tige", new Vector3(0f, 0.03f, 0f), 0.014f, 0.17f, foot, null, 12);
+            Vector2[] shade = { new Vector2(0.115f, 0f), new Vector2(0.125f, 0.02f), new Vector2(0.09f, 0.15f), new Vector2(0.07f, 0.165f) };
+            Turned(lamp, "Abat-jour", "lamp_shade", shade, Mat("shade_" + shadeHex, CuteCream, 0.2f, 0f, shadeHex, 0.35f),
+                new Vector3(0f, 0.17f, 0f));
+        }
+
+        /// <summary>Rangée de livres du paquet (70 cm de large à l'échelle 1), posée sur une tablette.</summary>
+        static GameObject BookRow(Transform parent, Vector3 position, float yaw, float scale = 1f)
+        {
+            return Cute(parent, "Livres", "Book_03", position, yaw, scale);
+        }
+
+        /// <summary>
+        /// Écran de jouet : coque épaisse et bombée, bosse arrière, col et socle ronds (esprit « Playroom »).
+        /// Renvoie le rendu de la dalle pour l'allumer à son étape.
+        /// </summary>
         static GameObject Monitor(Transform parent, string name, Vector3 screenCenter, float yaw, float width, float height,
-            float deskTop, Material screen, out Renderer screenRenderer)
+            float deskTop, Material screen, Material shell, out Renderer screenRenderer)
         {
             GameObject monitor = Group(parent, name, screenCenter, new Vector3(0f, yaw, 0f));
-            Material shell = Mat("device_dark", "#26292E", 0.5f, 0.2f);
-            Box(monitor.transform, "Coque", Vector3.zero, new Vector3(width + 0.06f, height + 0.06f, 0.04f), shell, 0.012f);
-            screenRenderer = ScreenQuad(monitor.transform, "Dalle", new Vector3(0f, 0f, -0.0215f), width, height, screen)
+            Box(monitor.transform, "Coque", Vector3.zero, new Vector3(width + 0.12f, height + 0.12f, 0.1f), shell, 0.045f);
+            Box(monitor.transform, "Dos bombé", new Vector3(0f, -0.02f, 0.08f), new Vector3(width * 0.6f, height * 0.6f, 0.1f), shell, 0.045f);
+            screenRenderer = ScreenQuad(monitor.transform, "Dalle", new Vector3(0f, 0f, -0.0515f), width, height, screen)
                 .GetComponent<Renderer>();
 
-            float standHeight = screenCenter.y - height * 0.5f - 0.03f - deskTop;
-            Box(monitor.transform, "Pied", new Vector3(0f, -height * 0.5f - 0.03f - standHeight * 0.5f, 0.04f),
-                new Vector3(0.07f, standHeight, 0.05f), shell, 0.01f);
-            Box(monitor.transform, "Base", new Vector3(0f, -height * 0.5f - 0.03f - standHeight + 0.01f, 0.03f),
-                new Vector3(0.32f, 0.02f, 0.2f), shell, 0.008f);
+            float bottom = -height * 0.5f - 0.06f;
+            float standHeight = screenCenter.y + bottom - deskTop;
+            Cyl(monitor.transform, "Col", new Vector3(0f, bottom - standHeight, 0.06f), 0.045f, standHeight + 0.03f, shell, null, 20);
+            Puck(monitor.transform, "Socle", new Vector3(0f, bottom - standHeight, 0.04f), 0.17f, 0.04f, 0.018f, shell);
             return monitor;
         }
 
-        static void Chair(Transform room, Vector3 position, float yaw, Material fabric, Material accent)
+        static void Chair(Transform room, Vector3 position, float yaw)
         {
-            Model(room, "Chaise", "chairDesk", position, yaw, 1.15f,
-                ("carpet", fabric), ("metalMedium", Mat("metal_dark", "#3A3F47", 0.6f, 0.7f)));
+            Cute(room, "Chaise", "Chair_PC_04", position, yaw);
+        }
+
+        /// <summary>Enceinte de jouet : caisson très arrondi, haut-parleurs cerclés de couleur, face vers -z.</summary>
+        static void Speaker(Transform parent, string name, Vector3 position, float width, float height, Material body,
+            Material cone, Material trim)
+        {
+            Transform speaker = Group(parent, name, position).transform;
+            float depth = width * 0.9f;
+            Box(speaker, "Caisson", new Vector3(0f, height * 0.5f, 0f), new Vector3(width, height, depth), body, width * 0.22f);
+            var front = new Vector3(-90f, 0f, 0f);
+            float face = -depth * 0.5f;
+            Puck(speaker, "Grave", new Vector3(0f, height * 0.33f, face + 0.006f), width * 0.3f, 0.02f, 0.008f, cone, front, 24);
+            Ring(speaker, "Cerclage grave", new Vector3(0f, height * 0.33f, face - 0.004f), width * 0.3f, width * 0.035f, trim, front);
+            Puck(speaker, "Aigu", new Vector3(0f, height * 0.74f, face + 0.006f), width * 0.15f, 0.02f, 0.008f, cone, front, 24);
+            Ring(speaker, "Cerclage aigu", new Vector3(0f, height * 0.74f, face - 0.004f), width * 0.15f, width * 0.03f, trim, front);
+        }
+
+        /// <summary>Corbeille ronde à bord roulé.</summary>
+        static void PaperBin(Transform room, Vector3 position, Material material)
+        {
+            Transform bin = Group(room, "Corbeille", position).transform;
+            Vector2[] profile = { new Vector2(0.11f, 0f), new Vector2(0.13f, 0.02f), new Vector2(0.155f, 0.33f) };
+            Turned(bin, "Seau", "paper_bin", profile, material, Vector3.zero);
+            Ring(bin, "Bord", new Vector3(0f, 0.335f, 0f), 0.155f, 0.018f, material);
+        }
+
+        /// <summary>Coupe de trophée tournée : socle, pied, coupe et deux anses.</summary>
+        static GameObject Trophy(Transform parent, Vector3 position, float scale, Material metal, Material plinth)
+        {
+            GameObject trophy = Group(parent, "Trophée", position);
+            trophy.transform.localScale = Vector3.one * scale;
+            Transform t = trophy.transform;
+            Box(t, "Socle", new Vector3(0f, 0.04f, 0f), new Vector3(0.16f, 0.08f, 0.16f), plinth, 0.02f);
+            Vector2[] cup = { new Vector2(0.05f, 0f), new Vector2(0.018f, 0.03f), new Vector2(0.016f, 0.09f), new Vector2(0.05f, 0.12f),
+                new Vector2(0.085f, 0.17f), new Vector2(0.095f, 0.24f), new Vector2(0.088f, 0.245f) };
+            Turned(t, "Coupe", "trophy_cup", cup, metal, new Vector3(0f, 0.08f, 0f));
+            Ring(t, "Anse gauche", new Vector3(-0.09f, 0.27f, 0f), 0.04f, 0.011f, metal, new Vector3(90f, 0f, 0f));
+            Ring(t, "Anse droite", new Vector3(0.09f, 0.27f, 0f), 0.04f, 0.011f, metal, new Vector3(90f, 0f, 0f));
+            return trophy;
+        }
+
+        /// <summary>Cube de jeu en bois aux coins doux, avec un motif en relief sur chaque face visible.</summary>
+        static GameObject LetterBlock(Transform parent, Vector3 position, float yaw, float size, Material body, Material motif)
+        {
+            GameObject block = Group(parent, "Cube de jeu", position, new Vector3(0f, yaw, 0f));
+            Transform t = block.transform;
+            float half = size * 0.5f;
+            Box(t, "Cube", new Vector3(0f, half, 0f), Vector3.one * size, body, size * 0.16f);
+            var plate = new Vector3(size * 0.56f, size * 0.56f, size * 0.08f);
+            Box(t, "Motif avant", new Vector3(0f, half, -half), plate, motif, size * 0.03f);
+            Box(t, "Motif côté", new Vector3(-half, half, 0f), plate, motif, size * 0.03f, new Vector3(0f, 90f, 0f));
+            Box(t, "Motif dessus", new Vector3(0f, size, 0f), plate, motif, size * 0.03f, new Vector3(90f, 0f, 0f));
+            return block;
+        }
+
+        /// <summary>Pyramide d'anneaux à empiler : socle, tige, cinq anneaux de couleur et une boule au sommet.</summary>
+        static GameObject StackingToy(Transform parent, Vector3 position, float scale)
+        {
+            GameObject toy = Group(parent, "Anneaux à empiler", position);
+            toy.transform.localScale = Vector3.one * scale;
+            Transform t = toy.transform;
+            Material wood = Mat("cute_wood", CuteWood, 0.3f);
+            Puck(t, "Socle", Vector3.zero, 0.12f, 0.04f, 0.018f, wood);
+            Cyl(t, "Tige", new Vector3(0f, 0.04f, 0f), 0.018f, 0.27f, wood, null, 14);
+            string[] colors = { CuteRed, CuteOrange, CuteYellow, CuteGreen, CuteBlue };
+            for (int i = 0; i < colors.Length; i++)
+            {
+                float radius = 0.085f - i * 0.011f, thick = 0.026f - i * 0.002f;
+                Ring(t, "Anneau", new Vector3(0f, 0.065f + i * 0.047f, 0f), radius, thick, Mat("toy_" + colors[i], colors[i], 0.45f));
+            }
+            Ball(t, "Boule", new Vector3(0f, 0.33f, 0f), Vector3.one * 0.06f, Mat("toy_" + CutePurple, CutePurple, 0.45f));
+            return toy;
+        }
+
+        /// <summary>Ours en peluche assis, tout en rondeurs.</summary>
+        static GameObject Teddy(Transform parent, Vector3 position, float yaw, float scale)
+        {
+            GameObject teddy = Group(parent, "Ours en peluche", position, new Vector3(0f, yaw, 0f));
+            teddy.transform.localScale = Vector3.one * scale;
+            Transform t = teddy.transform;
+            Material fur = Mat("teddy_fur", "#C98A55", 0.12f), light = Mat("teddy_light", "#F2CFA2", 0.12f),
+                dark = Mat("teddy_dark", "#3A2A24", 0.5f);
+            Ball(t, "Corps", new Vector3(0f, 0.13f, 0f), new Vector3(0.22f, 0.25f, 0.2f), fur);
+            Ball(t, "Ventre", new Vector3(0f, 0.12f, -0.07f), new Vector3(0.14f, 0.16f, 0.08f), light);
+            Ball(t, "Tête", new Vector3(0f, 0.31f, -0.01f), Vector3.one * 0.18f, fur);
+            // Le visage dépasse franchement de la tête (rayon 9 cm) pour rester lisible de loin.
+            Ball(t, "Museau", new Vector3(0f, 0.285f, -0.09f), new Vector3(0.095f, 0.07f, 0.065f), light);
+            Ball(t, "Truffe", new Vector3(0f, 0.3f, -0.125f), new Vector3(0.032f, 0.024f, 0.024f), dark);
+            Ball(t, "Oeil gauche", new Vector3(-0.036f, 0.335f, -0.093f), Vector3.one * 0.026f, dark);
+            Ball(t, "Oeil droit", new Vector3(0.036f, 0.335f, -0.093f), Vector3.one * 0.026f, dark);
+            Ball(t, "Oreille gauche", new Vector3(-0.07f, 0.39f, 0f), new Vector3(0.065f, 0.065f, 0.035f), fur);
+            Ball(t, "Oreille droite", new Vector3(0.07f, 0.39f, 0f), new Vector3(0.065f, 0.065f, 0.035f), fur);
+            Ball(t, "Bras gauche", new Vector3(-0.11f, 0.16f, -0.03f), new Vector3(0.07f, 0.13f, 0.07f), fur);
+            Ball(t, "Bras droit", new Vector3(0.11f, 0.16f, -0.03f), new Vector3(0.07f, 0.13f, 0.07f), fur);
+            Ball(t, "Patte gauche", new Vector3(-0.06f, 0.04f, -0.09f), new Vector3(0.08f, 0.07f, 0.12f), fur);
+            Ball(t, "Patte droite", new Vector3(0.06f, 0.04f, -0.09f), new Vector3(0.08f, 0.07f, 0.12f), fur);
+            return teddy;
+        }
+
+        /// <summary>Tapis de jeu en dalles de mousse colorées, posées en damier.</summary>
+        static GameObject PuzzleMat(Transform parent, Vector3 center, int columns, int rows, float tile, string[] colors)
+        {
+            GameObject mat = Group(parent, "Tapis de mousse", center);
+            for (int x = 0; x < columns; x++)
+            {
+                for (int z = 0; z < rows; z++)
+                {
+                    string hex = colors[(x + z * 2) % colors.Length];
+                    var position = new Vector3((x - (columns - 1) * 0.5f) * tile, 0.02f, (z - (rows - 1) * 0.5f) * tile);
+                    Box(mat.transform, "Dalle", position, new Vector3(tile - 0.012f, 0.04f, tile - 0.012f), Mat("mat_" + hex, hex, 0.15f), 0.015f);
+                }
+            }
+            return mat;
+        }
+
+        /// <summary>Horloge murale ronde et bombée, face tournée vers -z.</summary>
+        static void WallClock(Transform parent, Vector3 position, float radius, Material frame, Material face, Material hands)
+        {
+            Transform clock = Group(parent, "Horloge", position).transform;
+            var toRoom = new Vector3(-90f, 0f, 0f);
+            Puck(clock, "Fond", new Vector3(0f, 0f, 0.02f), radius * 0.95f, 0.03f, 0.01f, face, toRoom, 40);
+            Ring(clock, "Cerclage", Vector3.zero, radius, radius * 0.13f, frame, toRoom);
+            Box(clock, "Grande aiguille", new Vector3(0f, radius * 0.3f, -0.02f), new Vector3(0.018f, radius * 0.62f, 0.01f), hands, 0.006f);
+            Box(clock, "Petite aiguille", new Vector3(radius * 0.2f, 0f, -0.025f), new Vector3(radius * 0.45f, 0.02f, 0.01f), hands, 0.006f);
+            Ball(clock, "Axe", new Vector3(0f, 0f, -0.03f), Vector3.one * 0.03f, hands);
+        }
+
+        /// <summary>Tasse tournée avec son anse.</summary>
+        static void Mug(Transform parent, Vector3 position, Material material)
+        {
+            Transform mug = Group(parent, "Tasse", position).transform;
+            Vector2[] body = { new Vector2(0.04f, 0f), new Vector2(0.048f, 0.012f), new Vector2(0.05f, 0.095f), new Vector2(0.043f, 0.1f) };
+            Turned(mug, "Corps", "mug", body, material, Vector3.zero);
+            Ring(mug, "Anse", new Vector3(0.055f, 0.05f, 0f), 0.026f, 0.008f, material, new Vector3(90f, 0f, 0f));
         }
 
         /// <summary>Vaisseau spatial en briques, original (aucun set existant copié), monté en cinq groupes.</summary>
@@ -322,7 +450,7 @@ namespace Portfolio.EditorTools
             Brick(cockpit, -1, 2, -6, 2, 2, red);
 
             glow = Group(ship.transform, "Lueur des réacteurs", Vector3.zero);
-            Material flame = Mat("engine_glow", "#F2D9A8", 0.3f, 0f, "#F0C27A", 3.2f);
+            Material flame = Mat("engine_glow", "#F2D9A8", 0.3f, 0f, "#F0C27A", 1.8f);
             Cyl(glow.transform, "Tuyère gauche", new Vector3(-1f * Stud, BrickHeight, -6f * Stud), 0.055f, 0.03f, flame, new Vector3(-90f, 0f, 0f), 16);
             Cyl(glow.transform, "Tuyère droite", new Vector3(1f * Stud, BrickHeight, -6f * Stud), 0.055f, 0.03f, flame, new Vector3(-90f, 0f, 0f), 16);
             return ship;
@@ -348,15 +476,15 @@ namespace Portfolio.EditorTools
         static GameObject PixelFrame(Transform parent, Vector3 position, float yaw)
         {
             GameObject frame = Group(parent, "Cadre NFT", position, new Vector3(0f, yaw, 0f));
-            Box(frame.transform, "Cadre", Vector3.zero, new Vector3(1f, 1f, 0.04f), Mat("device_dark", "#26292E", 0.5f, 0.2f), 0.015f);
-            Box(frame.transform, "Fond", new Vector3(0f, 0f, -0.02f), new Vector3(0.88f, 0.88f, 0.02f), Mat("px_bg", "#1B1E24", 0.3f), 0.005f);
+            Box(frame.transform, "Cadre", Vector3.zero, new Vector3(1.04f, 1.04f, 0.06f), Mat("cute_wood_dark", CuteWoodDark, 0.3f), 0.028f);
+            Box(frame.transform, "Fond", new Vector3(0f, 0f, -0.025f), new Vector3(0.88f, 0.88f, 0.02f), Mat("px_bg", "#1B1E24", 0.3f), 0.005f);
 
             Material[] palette =
             {
-                Mat("px_teal", "#6FA8A0", 0.3f, 0f, "#6FA8A0", 0.45f),
-                Mat("px_violet", "#8F84BC", 0.3f, 0f, "#8F84BC", 0.45f),
-                Mat("px_amber", "#D2A862", 0.3f, 0f, "#D2A862", 0.45f),
-                Mat("px_white", "#DAD6CC", 0.3f, 0f, "#DAD6CC", 0.3f)
+                Mat("px_teal", "#6FA8A0", 0.3f, 0f, "#6FA8A0", 0.3f),
+                Mat("px_violet", "#8F84BC", 0.3f, 0f, "#8F84BC", 0.3f),
+                Mat("px_amber", "#D2A862", 0.3f, 0f, "#D2A862", 0.3f),
+                Mat("px_white", "#DAD6CC", 0.3f, 0f, "#DAD6CC", 0.2f)
             };
             const int grid = 8;
             const float cell = 0.1f;
@@ -370,8 +498,8 @@ namespace Portfolio.EditorTools
                     float py = (y - grid * 0.5f + 0.5f) * cell;
                     float px = (x + 0.5f) * cell;
                     var size = new Vector3(cell - 0.008f, cell - 0.008f, 0.02f);
-                    Box(frame.transform, "Pixel", new Vector3(-px, py, -0.035f), size, material, 0.004f);
-                    Box(frame.transform, "Pixel", new Vector3(px, py, -0.035f), size, material, 0.004f);
+                    Box(frame.transform, "Pixel", new Vector3(-px, py, -0.04f), size, material, 0.008f);
+                    Box(frame.transform, "Pixel", new Vector3(px, py, -0.04f), size, material, 0.008f);
                 }
             }
             return frame;
@@ -380,40 +508,33 @@ namespace Portfolio.EditorTools
         static GameObject Racket(Transform parent, Vector3 position, Vector3 euler)
         {
             GameObject racket = Group(parent, "Raquette de tennis", position, euler);
-            Box(racket.transform, "Manche", new Vector3(0f, 0.28f, 0f), new Vector3(0.035f, 0.5f, 0.04f), Mat("grip_dark", "#33373E", 0.2f), 0.012f);
-            Box(racket.transform, "Coeur", new Vector3(0f, 0.57f, 0f), new Vector3(0.03f, 0.1f, 0.1f), Mat("racket_frame", "#C4B18C", 0.5f), 0.01f);
-            Cyl(racket.transform, "Tamis", new Vector3(0.014f, 0.8f, 0f), 0.17f, 0.028f, Mat("racket_frame", "#C4B18C", 0.5f), new Vector3(0f, 0f, 90f), 28);
-            Cyl(racket.transform, "Cordage", new Vector3(0.017f, 0.8f, 0f), 0.145f, 0.034f, Mat("racket_strings", "#E6E2D8", 0.15f), new Vector3(0f, 0f, 90f), 28);
+            Box(racket.transform, "Manche", new Vector3(0f, 0.28f, 0f), new Vector3(0.04f, 0.5f, 0.045f), Mat("grip_dark", "#33373E", 0.2f), 0.018f);
+            Box(racket.transform, "Coeur", new Vector3(0f, 0.57f, 0f), new Vector3(0.035f, 0.1f, 0.1f), Mat("racket_frame", CuteYellow, 0.4f), 0.015f);
+            Ring(racket.transform, "Tamis", new Vector3(0f, 0.82f, 0f), 0.16f, 0.022f, Mat("racket_frame", CuteYellow, 0.4f), new Vector3(0f, 0f, 90f));
+            Cyl(racket.transform, "Cordage", new Vector3(0.004f, 0.82f, 0f), 0.15f, 0.008f, Mat("racket_strings", "#F3EFE4", 0.15f), new Vector3(0f, 0f, 90f), 32);
             return racket;
         }
 
         static GameObject Dumbbell(Transform parent, Vector3 position, float yaw)
         {
             GameObject dumbbell = Group(parent, "Haltère", position, new Vector3(0f, yaw, 0f));
-            Material steel = Mat("steel", "#B4B9BF", 0.7f, 0.85f), plate = Mat("plate_dark", "#2B2F35", 0.35f);
+            Material steel = Mat("cute_metal", CuteMetal, 0.5f, 0.3f), plate = Mat("plate_dark", "#3B414B", 0.35f);
             var sideways = new Vector3(0f, 0f, -90f);
-            Cyl(dumbbell.transform, "Barre", new Vector3(-0.17f, 0.075f, 0f), 0.018f, 0.34f, steel, sideways, 14);
-            Cyl(dumbbell.transform, "Poids gauche", new Vector3(-0.17f, 0.075f, 0f), 0.075f, 0.07f, plate, sideways, 20);
-            Cyl(dumbbell.transform, "Poids droit", new Vector3(0.1f, 0.075f, 0f), 0.075f, 0.07f, plate, sideways, 20);
+            Cyl(dumbbell.transform, "Barre", new Vector3(-0.17f, 0.08f, 0f), 0.02f, 0.34f, steel, sideways, 14);
+            Puck(dumbbell.transform, "Poids gauche", new Vector3(-0.17f, 0.08f, 0f), 0.08f, 0.08f, 0.025f, plate, sideways, 24);
+            Puck(dumbbell.transform, "Poids droit", new Vector3(0.09f, 0.08f, 0f), 0.08f, 0.08f, 0.025f, plate, sideways, 24);
             return dumbbell;
         }
 
         static GameObject Watch(Transform parent, Vector3 position, float yaw)
         {
             GameObject watch = Group(parent, "Montre", position, new Vector3(0f, yaw, 0f));
-            Material steel = Mat("steel", "#B4B9BF", 0.7f, 0.85f);
-            Box(watch.transform, "Présentoir", new Vector3(0f, 0.06f, 0.02f), new Vector3(0.11f, 0.12f, 0.08f), Mat("device_dark", "#26292E", 0.5f, 0.2f), 0.02f);
-            Box(watch.transform, "Bracelet", new Vector3(0f, 0.1f, -0.025f), new Vector3(0.036f, 0.17f, 0.012f), Mat("strap", "#5A4A40", 0.3f), 0.005f);
-            Cyl(watch.transform, "Boîtier", new Vector3(0f, 0.11f, -0.03f), 0.036f, 0.014f, steel, new Vector3(-90f, 0f, 0f), 24);
-            Cyl(watch.transform, "Cadran", new Vector3(0f, 0.11f, -0.043f), 0.029f, 0.004f, Mat("dial", "#2F3B4C", 0.8f), new Vector3(-90f, 0f, 0f), 24);
+            Material steel = Mat("cute_metal", CuteMetal, 0.5f, 0.3f);
+            Box(watch.transform, "Présentoir", new Vector3(0f, 0.06f, 0.02f), new Vector3(0.12f, 0.12f, 0.09f), Mat("cute_wood_dark", CuteWoodDark, 0.3f), 0.03f);
+            Box(watch.transform, "Bracelet", new Vector3(0f, 0.1f, -0.03f), new Vector3(0.04f, 0.17f, 0.014f), Mat("strap", "#5A4A40", 0.3f), 0.006f);
+            Puck(watch.transform, "Boîtier", new Vector3(0f, 0.11f, -0.035f), 0.04f, 0.018f, 0.007f, steel, new Vector3(-90f, 0f, 0f), 24);
+            Cyl(watch.transform, "Cadran", new Vector3(0f, 0.11f, -0.052f), 0.03f, 0.004f, Mat("dial", "#2F3B4C", 0.8f), new Vector3(-90f, 0f, 0f), 24);
             return watch;
-        }
-
-        static void Plant(Transform room, Vector3 position, float scale)
-        {
-            Model(room, "Plante", "pottedPlant", position, 25f, 1.5f * scale,
-                ("wood", Mat("pot", "#B58A6C", 0.25f)), ("woodDark", Mat("trunk", "#7A6654", 0.2f)),
-                ("plant", Mat("leaf", "#6C8C70", 0.3f)));
         }
     }
 }

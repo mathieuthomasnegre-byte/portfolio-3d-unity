@@ -12,8 +12,9 @@ using UnityEngine.UIElements;
 namespace Portfolio.EditorTools
 {
     /// <summary>
-    /// Construit toute la scène du portfolio par code : maillages, matériaux, trois chambres, lumières,
-    /// post-traitement, interface. Menu « Portfolio > Reconstruire la scène ».
+    /// Construit toute la scène du portfolio par code : trois chambres meublées avec le paquet
+    /// « Cute Furniture » d'ithappy, objets complémentaires, matériaux, lumières, post-traitement, interface.
+    /// Menu « Portfolio > Reconstruire la scène ».
     /// Attention : la reconstruction remplace la scène et le dossier Generated.
     /// </summary>
     public static partial class PortfolioBuilder
@@ -21,11 +22,12 @@ namespace Portfolio.EditorTools
         public const string Root = "Assets/Portfolio";
         public const string Generated = Root + "/Generated";
         public const string ScenePath = Root + "/Scenes/Portfolio.unity";
-        public const string KitFolder = "Assets/Kenney Furniture Kit";
+        public const string CuteFolder = "Assets/ithappy/Cute_Furniture_Free";
 
         const float Stud = 0.08f;
         const float BrickHeight = 0.096f;
-        const float RoomSpacing = 14f;
+        // Chambres très espacées : depuis l'une, on ne voit jamais le bord de la voisine.
+        const float RoomSpacing = 40f;
 
         static readonly Dictionary<string, Mesh> meshes = new Dictionary<string, Mesh>();
         static readonly Dictionary<string, Material> materials = new Dictionary<string, Material>();
@@ -70,21 +72,23 @@ namespace Portfolio.EditorTools
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             RenderSettings.skybox = null;
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.reflectionIntensity = 0f;
+            // Les reflets viennent des sondes posées dans chaque chambre (BakeReflections).
+            RenderSettings.reflectionIntensity = 1f;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogStartDistance = 17f;
             RenderSettings.fogEndDistance = 46f;
 
             // Sol du « studio » : il se fond dans le brouillard, les chambres semblent posées dans le vide.
-            Box(null, "Sol du studio", new Vector3(RoomSpacing, -0.66f, 4f), new Vector3(160f, 0.1f, 90f),
+            Box(null, "Sol du studio", new Vector3(RoomSpacing, -0.66f, 4f), new Vector3(RoomSpacing * 2f + 160f, 0.1f, 90f),
                 Mat("studio", "#33363B", 0.15f), 0.01f);
 
             var sunObject = new GameObject("Soleil");
             Light sun = sunObject.AddComponent<Light>();
             sun.type = LightType.Directional;
             sun.shadows = LightShadows.Soft;
-            sun.shadowStrength = 0.85f;
+            // Ombre pleine : c'est la lumière ambiante et les rebonds qui l'éclaircissent, comme dans une vraie pièce.
+            sun.shadowStrength = 1f;
             sun.shadowBias = 0.03f;
             sun.shadowNormalBias = 0.3f;
 
@@ -103,6 +107,7 @@ namespace Portfolio.EditorTools
             CameraRig rig = cameraObject.AddComponent<CameraRig>();
             rig.cam = cam;
 
+            cuteModels.Clear();
             RoomController[] rooms =
             {
                 BuildChildRoom(0),
@@ -110,11 +115,14 @@ namespace Portfolio.EditorTools
                 BuildAdultRoom(2)
             };
 
+            // Halo (bloom) volontairement discret : les lampes et les fenêtres ne doivent pas éblouir.
             Volume[] volumes =
             {
-                MakeVolume(0, "Enfant", 0.1f, -8f, 14f, 8f, 0.5f, 0.24f, "#6F7D8C", "#8C8273"),
-                MakeVolume(1, "Ado", 0.45f, -14f, -12f, 10f, 0.85f, 0.32f, "#6B6A8A", "#7F8888"),
-                MakeVolume(2, "Jeune adulte", 0.15f, -6f, 8f, 7f, 0.45f, 0.22f, "#73808A", "#8E8472")
+                // Une ambiance marquée par âge : matin pastel, nuit néon, coucher de soleil doré.
+                // Expositions relevées pour la courbe ACES, plus sombre que la courbe neutre dans les tons moyens.
+                MakeVolume(0, "Enfant", 0.25f, 8f, 10f, 6f, 0.25f, 0.2f, "#6F86A0", "#A08C6C"),
+                MakeVolume(1, "Ado", 0.7f, 4f, -18f, 14f, 0.55f, 0.36f, "#5E4F9A", "#6F9AA0"),
+                MakeVolume(2, "Jeune adulte", 0.15f, 2f, 20f, 9f, 0.25f, 0.26f, "#7A6A80", "#B08A5E")
             };
 
             var directorObject = new GameObject("Directeur");
@@ -125,9 +133,19 @@ namespace Portfolio.EditorTools
             director.cam = cam;
             director.volumes = volumes;
             director.ui = BuildInterface();
-            director.PreviewRoom(0);
+            var outline = new Material(FindShader("Portfolio/Outline")) { name = "outline" };
+            director.outline = Register("outline", outline);
+            // Son de la construction en briques (chambre d'enfant) : c'est le seul son du portfolio.
+            director.sfx = directorObject.AddComponent<AudioSource>();
+            director.sfx.playOnAwake = false;
+            director.sfx.spatialBlend = 0f;
+            director.brickClicks = BrickAudio.Clicks();
+            director.brickFinish = BrickAudio.Finish();
 
             SaveMeshes();
+            BakeReflections(director);
+            director.PreviewRoom(0);
+
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
             AssetDatabase.SaveAssets();
@@ -170,7 +188,8 @@ namespace Portfolio.EditorTools
                 SetFloat(settings, "Radius", 0.5f);
                 SetFloat(settings, "DirectLightingStrength", 0.4f);
                 SetFloat(settings, "Falloff", 60f);
-                SetInt(settings, "Samples", 1);
+                // Échantillonnage élevé : occlusion sans grain sur les grands murs unis.
+                SetInt(settings, "Samples", 0);
                 SetInt(settings, "BlurQuality", 0);
                 occlusion.ApplyModifiedPropertiesWithoutUndo();
                 feature.SetActive(true);
@@ -184,9 +203,12 @@ namespace Portfolio.EditorTools
             pipeline.FindProperty("m_MSAA").intValue = 4;
             pipeline.FindProperty("m_AdditionalLightsPerObjectLimit").intValue = 8;
             pipeline.FindProperty("m_AdditionalLightShadowsSupported").boolValue = true;
-            pipeline.FindProperty("m_ShadowDistance").floatValue = 34f;
+            // Une chambre tient dans 18 m depuis la caméra : la carte d'ombre est concentrée dessus, ombres plus nettes.
+            pipeline.FindProperty("m_ShadowDistance").floatValue = 22f;
             pipeline.FindProperty("m_ShadowCascadeCount").intValue = 2;
-            pipeline.FindProperty("m_Cascade2Split").floatValue = 0.45f;
+            pipeline.FindProperty("m_Cascade2Split").floatValue = 0.55f;
+            pipeline.FindProperty("m_ReflectionProbeBlending").boolValue = true;
+            pipeline.FindProperty("m_ReflectionProbeBoxProjection").boolValue = true;
             pipeline.FindProperty("m_MainLightShadowmapResolution").intValue = 2048;
             pipeline.FindProperty("m_AdditionalLightsShadowmapResolution").intValue = 2048;
             pipeline.FindProperty("m_SoftShadowsSupported").boolValue = true;
@@ -222,10 +244,11 @@ namespace Portfolio.EditorTools
             AssetDatabase.CreateAsset(profile, $"{Generated}/Profiles/Ambiance_{index + 1}.asset");
 
             var tonemapping = AddOverride<Tonemapping>(profile);
-            tonemapping.mode.value = TonemappingMode.Neutral;
+            // Courbe filmique : hautes lumières qui se fondent doucement vers le blanc, comme sur une photo.
+            tonemapping.mode.value = TonemappingMode.ACES;
 
             var bloomOverride = AddOverride<Bloom>(profile);
-            bloomOverride.threshold.value = 0.95f;
+            bloomOverride.threshold.value = 1.1f;
             bloomOverride.intensity.value = bloom;
             bloomOverride.scatter.value = 0.72f;
 
@@ -258,6 +281,45 @@ namespace Portfolio.EditorTools
             return volume;
         }
 
+        /// <summary>
+        /// Une sonde de réflexion par chambre, calculée avec l'éclairage de cette chambre : reflets de la fenêtre
+        /// sur le parquet, de la pièce dans les écrans, les métaux et les vernis. La projection en boîte cale
+        /// les reflets sur les murs réels.
+        /// </summary>
+        static void BakeReflections(PortfolioDirector director)
+        {
+            // Sans cela, les shaders encore en compilation seraient capturés en cyan.
+            ShaderUtil.allowAsyncCompilation = false;
+            for (int i = 0; i < director.rooms.Length; i++)
+            {
+                RoomController room = director.rooms[i];
+                GameObject go = Group(room.transform, "Reflets", new Vector3(0f, 1.4f, 0.3f));
+                ReflectionProbe probe = go.AddComponent<ReflectionProbe>();
+                probe.mode = ReflectionProbeMode.Custom;
+                // Boîte du sol (y = 0) au haut des murs, du mur gauche au mur du fond.
+                probe.center = new Vector3(-0.05f, 0.6f, -0.25f);
+                probe.size = new Vector3(8.2f, 4f, 6.6f);
+                probe.boxProjection = true;
+                probe.blendDistance = 0.4f;
+                probe.resolution = 256;
+                probe.hdr = true;
+                probe.nearClipPlane = 0.05f;
+                probe.farClipPlane = 25f;
+                // Les chambres n'ont pas de plafond : le fond de la sonde joue le plafond éclairé par la pièce,
+                // sinon le parquet vernis refléterait le vide sombre au-dessus.
+                probe.clearFlags = ReflectionProbeClearFlags.SolidColor;
+                probe.backgroundColor = Color.Lerp(room.ambientSky, room.ambientEquator, 0.5f) * 0.8f;
+
+                // Chambre terminée et seule allumée : tout ce qui apparaîtra pendant la visite s'y reflète déjà.
+                director.PreviewRoom(i);
+                string path = $"{Generated}/Reflets_{i + 1}.exr";
+                if (!UnityEditor.Lightmapping.BakeReflectionProbe(probe, path))
+                    throw new System.InvalidOperationException("Échec du calcul de la sonde de réflexion : " + path);
+                AssetDatabase.ImportAsset(path);
+                probe.customBakedTexture = AssetDatabase.LoadAssetAtPath<Texture>(path);
+            }
+        }
+
         static T AddOverride<T>(VolumeProfile profile) where T : VolumeComponent
         {
             T component = profile.Add<T>(true);
@@ -288,8 +350,42 @@ namespace Portfolio.EditorTools
             ui.tagline = "Data, crypto et goût de construire";
             ui.introText = "Trois chambres, trois âges. De l'enfant qui assemble ses premières briques au jeune "
                            + "adulte qui construit ses projets : entre, et assemble mon parcours pièce par pièce.";
-            ui.contactText = "Étudiant en Bachelor Data à l'Eugenia School, je cherche un stage de data analyst "
-                             + "dans la crypto ou la fintech. Si mon parcours vous parle, écrivons la prochaine pièce ensemble.";
+            ui.contactText = "Étudiant en **Bachelor Data** à l'Eugenia School, je cherche un **stage de data analyst** "
+                             + "dans la **crypto** ou la **fintech**. Si mon parcours vous parle, écrivons la prochaine pièce ensemble.";
+            // Uniquement ce que raconte le portfolio : rien d'inventé.
+            ui.sheet = new[]
+            {
+                new SheetSection { title = "FORMATION", lines = new[]
+                {
+                    "**Bachelor Data**, Eugenia School : traitement, analyse et visualisation de données",
+                    "Bac général, lycée Hoche (Versailles)"
+                } },
+                new SheetSection { title = "COMPÉTENCES TECHNIQUES", lines = new[]
+                {
+                    "Data : **Python**, **SQL**, **Looker** (analyse et visualisation)",
+                    "Marchés : suivi des **cryptomonnaies** depuis 13 ans, analyse de projets Web3 et NFT",
+                    "Trading algorithmique : conception d'un bot, **backtesting** et paper trading",
+                    "Développement : prototype d'application d'apprentissage du libanais"
+                } },
+                new SheetSection { title = "EXPÉRIENCES", lines = new[]
+                {
+                    "**Vice-président d'antenne, Kryptosphere** (AES) : équipe, administratif, événements, partenariats",
+                    "**Staff, hackathon Secure Horizons** : 36 h, 130 participants, projets IA, cybersécurité et blockchain",
+                    "**Participant, Hack the Feed** : data analyst et builder, analyse de vidéos des réseaux sociaux",
+                    "**BIG de Bpifrance** : rencontres avec des entrepreneurs et des acteurs de l'innovation"
+                } },
+                new SheetSection { title = "QUALITÉS", lines = new[]
+                {
+                    "**Rigueur** et **patience** : suivre un plan jusqu'au bout",
+                    "**Discipline** et **endurance** : natation à bon niveau, musculation",
+                    "**Esprit d'initiative** : créer les opportunités plutôt que les attendre"
+                } },
+                new SheetSection { title = "CENTRES D'INTÉRÊT", lines = new[]
+                {
+                    "Crypto et Web3, jeux vidéo, informatique",
+                    "Tennis, natation, musculation, montres"
+                } }
+            };
             ui.email = "mathieu.negre78@gmail.com";
             ui.linkedinUrl = "https://www.linkedin.com/in/mathieu-negre-671025374/";
             ui.cvUrl = "";
@@ -316,15 +412,35 @@ namespace Portfolio.EditorTools
             material.SetColor("_BaseColor", Hex(hex));
             material.SetFloat("_Smoothness", smoothness);
             material.SetFloat("_Metallic", metallic);
-            material.SetFloat("_RimStrength", 0.1f);
+            // Pas de liseré sur les matières dures : leurs bords brillent par les reflets de la pièce (sondes).
+            material.SetFloat("_RimStrength", 0f);
             if (emissionHex != null) material.SetColor("_EmissionColor", Hex(emissionHex) * emission);
+            // Dégradé vertical peint, comme le nuancier des modèles ithappy ; à peine marqué sur les murs.
+            material.SetFloat("_Gradient", 0.24f);
             if (Surfaces.TryGetValue(name, out int surface))
             {
                 material.SetFloat("_Surface", surface);
-                // Le tissu accroche la lumière rasante : liseré plus marqué.
+                // Le tissu accroche la lumière rasante : reflet velouté sur les bords.
                 if (surface == 3) material.SetFloat("_RimStrength", 0.22f);
+                if (surface == 1) material.SetFloat("_Gradient", 0f);
+                if (surface == 4) material.SetFloat("_Gradient", 0.1f);
+                // Parquet vitrifié et bois des meubles vernis : une couche de reflets nets par-dessus.
+                // Vernis satiné : plus net, il scintillerait sur les joints des lames sous le soleil.
+                if (surface == 1) ClearCoat(material, 0.45f, 0.76f);
+                if (surface == 2) ClearCoat(material, 0.3f, 0.8f);
             }
+            // Rideaux et abat-jour laissent passer la lumière qui les éclaire par derrière.
+            if (name.EndsWith("_curtain")) material.SetFloat("_Transmission", 0.55f);
+            if (name.StartsWith("shade_")) material.SetFloat("_Transmission", 0.7f);
             return Register(name, material);
+        }
+
+        static void ClearCoat(Material material, float mask, float smoothness)
+        {
+            material.SetFloat("_ClearCoatOn", 1f);
+            material.EnableKeyword("_CLEARCOAT");
+            material.SetFloat("_ClearCoatMask", mask);
+            material.SetFloat("_ClearCoatSmoothness", smoothness);
         }
 
         static Material ScreenMat(string name, int mode, string background, string colorA, string colorB, float intensity)
@@ -413,9 +529,44 @@ namespace Portfolio.EditorTools
             return Shape(parent, name, mesh, material, baseCenter, euler);
         }
 
+        /// <summary>Cylindre aux bords arrondis, posé sur sa base.</summary>
+        static GameObject Puck(Transform parent, string name, Vector3 baseCenter, float radius, float height, float round,
+            Material material, Vector3? euler = null, int segments = 40)
+        {
+            string key = $"puck_{radius:0.###}_{height:0.###}_{round:0.###}_{segments}";
+            Mesh mesh = CachedMesh(key, () => MeshLib.Puck(radius, height, round, segments));
+            return Shape(parent, name, mesh, material, baseCenter, euler);
+        }
+
+        /// <summary>Forme tournée (abat-jour, corbeille...) : profil en (rayon, hauteur) du bas vers le haut.</summary>
+        static GameObject Turned(Transform parent, string name, string key, Vector2[] profile, Material material,
+            Vector3 baseCenter, Vector3? euler = null)
+        {
+            Mesh mesh = CachedMesh("turned_" + key, () => MeshLib.Lathe(profile, 32));
+            return Shape(parent, name, mesh, material, baseCenter, euler);
+        }
+
+        /// <summary>Anneau couché, centré sur position (anneaux d'empilement, bouées, cerclages).</summary>
+        static GameObject Ring(Transform parent, string name, Vector3 center, float radius, float thickness, Material material,
+            Vector3? euler = null)
+        {
+            string key = $"ring_{radius:0.###}_{thickness:0.###}";
+            Mesh mesh = CachedMesh(key, () => MeshLib.Torus(radius, thickness));
+            return Shape(parent, name, mesh, material, center, euler);
+        }
+
+        /// <summary>Plaque aux coins arrondis posée au sol (tapis).</summary>
+        static GameObject Slab(Transform parent, string name, Vector3 baseCenter, float width, float depth, float height,
+            float radius, Material material)
+        {
+            string key = $"slab_{width:0.###}_{depth:0.###}_{height:0.###}_{radius:0.###}";
+            Mesh mesh = CachedMesh(key, () => MeshLib.RoundedSlab(width, depth, height, radius));
+            return Shape(parent, name, mesh, material, baseCenter);
+        }
+
         static GameObject Ball(Transform parent, string name, Vector3 center, Vector3 scale, Material material)
         {
-            Mesh mesh = Resources.GetBuiltinResource<Mesh>("Sphere.fbx");
+            Mesh mesh = CachedMesh("sphere", () => MeshLib.Sphere());
             GameObject go = Shape(parent, name, mesh, material, center);
             go.transform.localScale = scale;
             return go;
@@ -478,13 +629,15 @@ namespace Portfolio.EditorTools
 
         static RoomStep Step(string title, string body, string action, GameObject focus,
             GameObject[] reveal = null, bool revealChildren = false, Transform origin = null,
-            Renderer[] screens = null, Light[] lights = null)
+            Renderer[] screens = null, Light[] lights = null, string linkLabel = null, string linkUrl = null)
         {
             var step = new RoomStep
             {
                 title = title,
                 body = body,
                 actionLabel = action,
+                linkLabel = linkLabel,
+                linkUrl = linkUrl,
                 focus = focus ? focus.transform : null,
                 revealChildren = revealChildren,
                 revealOrigin = origin,

@@ -164,6 +164,28 @@
     white-space: normal;
 }
 
+.card-link {
+    align-self: flex-start;
+    margin: 18px 0 0 0;
+    padding: 10px 22px;
+    font-size: 19px;
+    -unity-font-style: bold;
+    color: rgb(28, 30, 34);
+    background-color: rgb(217, 178, 106);
+    border-width: 0;
+    border-radius: 24px;
+    transition-property: background-color, scale;
+    transition-duration: 0.2s;
+}
+
+.card-link:hover {
+    background-color: rgb(236, 200, 132);
+}
+
+.card-link:active {
+    scale: 0.97 0.97;
+}
+
 /* Bas d'écran : progression et action */
 
 .footer {
@@ -231,6 +253,36 @@
 .action--busy {
     opacity: 0;
     translate: 0 10px;
+}
+
+.buttons {
+    flex-direction: row;
+    align-items: center;
+}
+
+/* Retour à la fiche précédente */
+
+.back {
+    padding: 13px 26px;
+    margin: 0 14px 0 0;
+    font-size: 19px;
+    -unity-font-style: bold;
+    color: rgb(236, 232, 224);
+    background-color: rgba(20, 22, 26, 0.7);
+    border-width: 1px;
+    border-color: rgba(236, 232, 224, 0.35);
+    border-radius: 30px;
+    transition-property: background-color, opacity, translate;
+    transition-duration: 0.25s;
+}
+
+.back:hover {
+    background-color: rgba(60, 64, 72, 0.85);
+}
+
+.back--hidden {
+    opacity: 0;
+    translate: 10px 0;
 }
 
 .secondary {
@@ -346,7 +398,104 @@
     margin-top: 16px;
 }
 
+/* Onglets de la fin : contact et fiche compétences */
+
+.panel--wide {
+    width: 900px;
+    max-height: 88%;
+}
+
+.tabs {
+    flex-direction: row;
+    margin-bottom: 26px;
+    padding: 5px;
+    border-radius: 24px;
+    background-color: rgba(236, 232, 224, 0.07);
+}
+
+.tab {
+    padding: 9px 22px;
+    margin: 0 2px;
+    font-size: 18px;
+    -unity-font-style: bold;
+    color: rgba(236, 232, 224, 0.65);
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    border-radius: 18px;
+    transition-property: background-color, color;
+    transition-duration: 0.25s;
+}
+
+.tab:hover {
+    color: rgb(236, 232, 224);
+}
+
+.tab--current {
+    color: rgb(28, 26, 22);
+    background-color: rgb(217, 178, 106);
+}
+
+.tab--current:hover {
+    color: rgb(28, 26, 22);
+}
+
+.page {
+    align-self: stretch;
+    flex-shrink: 1;
+}
+
+.sheet-hero {
+    font-size: 44px;
+    -unity-font-style: bold;
+    margin-bottom: 12px;
+}
+
+.sheet {
+    flex-shrink: 1;
+    max-height: 520px;
+}
+
+.sheet-section {
+    margin-bottom: 18px;
+    padding-left: 16px;
+    border-left-width: 3px;
+    border-left-color: rgba(217, 178, 106, 0.6);
+}
+
+.sheet-title {
+    font-size: 15px;
+    letter-spacing: 4px;
+    color: rgb(217, 178, 106);
+    -unity-font-style: bold;
+    margin-bottom: 6px;
+}
+
+.sheet-line {
+    font-size: 19px;
+    color: rgba(236, 232, 224, 0.9);
+    white-space: normal;
+    margin-bottom: 4px;
+}
+
+.panel-bottom {
+    flex-direction: row;
+    margin-top: 6px;
+}
+
+.panel-bottom .ghost {
+    margin-right: 18px;
+}
+
 /* Passage d'une chambre à l'autre */
+
+.veil {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgb(16, 17, 21);
+}
 
 .interlude {
     position: absolute;

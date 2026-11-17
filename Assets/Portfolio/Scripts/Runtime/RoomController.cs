@@ -10,6 +10,9 @@ namespace Portfolio
         public string title;
         [TextArea(2, 8)] public string body;
         public string actionLabel;
+        [Tooltip("Bouton de lien sur la fiche (projet en ligne, démo…). Vide : pas de bouton.")]
+        public string linkLabel;
+        public string linkUrl;
 
         [Tooltip("Objets qui apparaissent à cette étape.")]
         public Transform[] reveal;
@@ -58,5 +61,9 @@ namespace Portfolio
         public Transform[] finaleReveal;
         public Light[] finaleLights;
         public Behaviour[] finaleEnable;
+
+        [Header("Son")]
+        [Tooltip("Construction en briques : un clic par brique posée, puis le son de fin. Seule chambre sonore.")]
+        public bool brickSounds;
     }
 }

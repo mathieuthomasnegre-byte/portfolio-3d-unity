@@ -17,6 +17,15 @@ namespace Portfolio
         public Camera cam;
         public Volume[] volumes;
         public float transitionSeconds = 5.2f;
+        [Tooltip("Contour lumineux posé sur l'objet présenté (shader Portfolio/Outline).")]
+        public Material outline;
+
+        [Header("Son de construction")]
+        public AudioSource sfx;
+        [Tooltip("Clics de briques ; un clip est tiré au hasard à chaque brique posée.")]
+        public AudioClip[] brickClicks;
+        [Tooltip("Son joué quand la construction est terminée.")]
+        public AudioClip brickFinish;
 
         struct Pose
         {
@@ -30,10 +39,13 @@ namespace Portfolio
         readonly Dictionary<Transform, Pose> rest = new Dictionary<Transform, Pose>();
         readonly Dictionary<Light, float> lightRest = new Dictionary<Light, float>();
         readonly List<Renderer> highlighted = new List<Renderer>();
+        readonly List<GameObject> outlines = new List<GameObject>();
         Light[][] roomLights;
         MaterialPropertyBlock block;
         int room;
         int step = -1;
+        // Fiche affichée : peut revenir en arrière sur les étapes déjà passées (step reste la plus avancée).
+        int view = -1;
         bool busy;
         bool started;
         Interactable hovered;
@@ -73,6 +85,7 @@ namespace Portfolio
 
             ui.EnsureBuilt();
             ui.Advance = Advance;
+            ui.Back = Back;
             ui.Begin = Begin;
             ui.Restart = () => SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
             ui.ShowIntro();
@@ -86,6 +99,8 @@ namespace Portfolio
             if (keyboard != null && (keyboard.spaceKey.wasPressedThisFrame || keyboard.enterKey.wasPressedThisFrame
                                      || keyboard.rightArrowKey.wasPressedThisFrame))
                 Advance();
+            if (keyboard != null && (keyboard.leftArrowKey.wasPressedThisFrame || keyboard.backspaceKey.wasPressedThisFrame))
+                Back();
 
             // Survol : le nom de l'objet déjà découvert s'affiche sous le bouton ; un clic rouvre sa fiche.
             Pointer pointer = Pointer.current;
@@ -108,12 +123,10 @@ namespace Portfolio
             }
 
             if (item == null || !pointer.press.wasPressedThisFrame) return;
-            RoomStep s = rooms[room].steps[item.step];
-            ui.ShowCard(s.title, s.body, item.step, rooms[room].steps.Length);
-            Highlight(s.focus);
+            ShowView(item.step);
         }
 
-                void Begin()
+        void Begin()
         {
             started = true;
             StartCoroutine(rig.Settle(0.22f, 1.8f));
@@ -127,15 +140,39 @@ namespace Portfolio
         public void Advance()
         {
             if (busy || !started) return;
+            // On relisait une fiche passée : on avance de fiche en fiche jusqu'à la plus récente.
+            if (view < step)
+            {
+                ShowView(view + 1);
+                return;
+            }
             RoomController rc = rooms[room];
             if (step < rc.steps.Length - 1) StartCoroutine(RunStep(step + 1));
             else if (room < rooms.Length - 1) StartCoroutine(GoToRoom(room + 1));
             else ui.ShowContact();
         }
 
+        /// <summary>Revient à la fiche précédente de la chambre, sans défaire ce qui a été monté.</summary>
+        public void Back()
+        {
+            if (busy || !started || view <= 0) return;
+            ShowView(view - 1);
+        }
+
+        void ShowView(int index)
+        {
+            view = index;
+            RoomStep s = rooms[room].steps[index];
+            ui.ShowCard(s.title, s.body, index, rooms[room].steps.Length, s.linkLabel, s.linkUrl);
+            Highlight(s.focus);
+            ui.SetBack(view > 0);
+            ui.SetAction(NextLabel());
+        }
+
         string NextLabel()
         {
             RoomController rc = rooms[room];
+            if (view < step) return "Suivant  →";
             if (step < rc.steps.Length - 1) return rc.steps[step + 1].actionLabel;
             return rc.nextLabel;
         }
@@ -144,26 +181,34 @@ namespace Portfolio
         {
             busy = true;
             step = index;
+            view = index;
             RoomController rc = rooms[room];
             RoomStep s = rc.steps[index];
 
             ui.SetAction(null);
-            ui.ShowCard(s.title, s.body, index, rc.steps.Length);
+            ui.SetBack(false);
+            ui.ShowCard(s.title, s.body, index, rc.steps.Length, s.linkLabel, s.linkUrl);
             ui.SetProgress(index, rc.steps.Length);
             Highlight(s.focus);
 
             if (s.screens != null) foreach (Renderer screen in s.screens) StartCoroutine(PowerOn(screen));
             if (s.lights != null) foreach (Light l in s.lights) StartCoroutine(FadeIn(l, 0.9f));
-            yield return Reveal(Targets(s), s.revealOrigin, s.revealChildren ? 0.07f : 0.15f, 0.55f);
+            yield return Reveal(Targets(s), s.revealOrigin, s.revealChildren ? 0.07f : 0.15f, 0.55f, rc.brickSounds);
 
             if (index == rc.steps.Length - 1) yield return Finale(rc);
 
             ui.SetAction(NextLabel());
+            ui.SetBack(view > 0);
             busy = false;
         }
 
         IEnumerator Finale(RoomController rc)
         {
+            if (rc.brickSounds && sfx && brickFinish)
+            {
+                sfx.pitch = 1f;
+                sfx.PlayOneShot(brickFinish, 0.9f);
+            }
             if (rc.finaleLights != null) foreach (Light l in rc.finaleLights) StartCoroutine(FadeIn(l, 1.4f));
             if (rc.finaleEnable != null) foreach (Behaviour b in rc.finaleEnable) if (b) b.enabled = true;
             if (rc.finaleReveal != null && rc.finaleReveal.Length > 0)
@@ -174,6 +219,7 @@ namespace Portfolio
         {
             busy = true;
             ui.SetAction(null);
+            ui.SetBack(false);
             ui.HideCard();
             ui.SetChapter(null, null, null);
             Highlight(null);
@@ -225,6 +271,9 @@ namespace Portfolio
                 float fadeIn = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.4f, 0.9f, t));
                 for (int i = 0; i < leaving.Length; i++) leaving[i].intensity = leavingLevel[i] * fadeOut;
                 for (int i = 0; i < arriving.Length; i++) arriving[i].intensity = arrivingLevel[i] * fadeIn;
+                // Voile : la chambre quittée s'efface, le trajet et le décor restent cachés, la suivante apparaît.
+                ui.SetVeil(Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.04f, 0.26f, t))
+                           * (1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.62f, 0.86f, t))));
 
                 if (!titled && t > 0.12f)
                 {
@@ -236,7 +285,7 @@ namespace Portfolio
                     cleared = true;
                     ui.SetInterlude(null, null);
                 }
-                if (!building && t > 0.5f)
+                if (!building && t > 0.66f)
                 {
                     building = true;
                     assembly = StartCoroutine(Reveal(pieces, null, 0.075f, 0.6f));
@@ -244,6 +293,7 @@ namespace Portfolio
                 yield return null;
             }
             ApplyBlend(next, next, 0f);
+            ui.SetVeil(0f);
             for (int i = 0; i < arriving.Length; i++) arriving[i].intensity = arrivingLevel[i];
             EnableRoomLights(room, false);
             ui.SetInterlude(null, null);
@@ -251,6 +301,7 @@ namespace Portfolio
 
             room = next;
             step = -1;
+            view = -1;
             RoomController rc = rooms[room];
             ui.SetChapter(rc.chapter, rc.title, rc.subtitle);
             ui.SetChapterIndex(room);
@@ -365,7 +416,7 @@ namespace Portfolio
             l.intensity = 0f;
         }
 
-        IEnumerator Reveal(List<Transform> targets, Transform origin, float stagger, float duration)
+        IEnumerator Reveal(List<Transform> targets, Transform origin, float stagger, float duration, bool clicks = false)
         {
             if (targets.Count == 0) yield break;
             foreach (Transform t in targets)
@@ -376,6 +427,8 @@ namespace Portfolio
 
             float start = Time.time;
             bool done = false;
+            // Le clic part quand la brique touche sa place (fin de la courbe), pas quand elle quitte le bac.
+            var clicked = new bool[targets.Count];
             while (!done)
             {
                 done = true;
@@ -385,6 +438,11 @@ namespace Portfolio
                     Pose pose = rest[t];
                     float u = Mathf.Clamp01((Time.time - start - i * stagger) / duration);
                     if (u < 1f) done = false;
+                    if (clicks && !clicked[i] && u >= 0.72f)
+                    {
+                        clicked[i] = true;
+                        Click();
+                    }
 
                     Vector3 from = origin && t.parent
                         ? t.parent.InverseTransformPoint(origin.position)
@@ -397,6 +455,14 @@ namespace Portfolio
                 }
                 yield return null;
             }
+        }
+
+        void Click()
+        {
+            if (!sfx || brickClicks == null || brickClicks.Length == 0) return;
+            AudioClip clip = brickClicks[Random.Range(0, brickClicks.Length)];
+            sfx.pitch = Random.Range(0.94f, 1.08f);
+            sfx.PlayOneShot(clip, Random.Range(0.55f, 0.8f));
         }
 
         static float EaseOutBack(float u)
@@ -432,6 +498,8 @@ namespace Portfolio
         {
             foreach (Renderer r in highlighted) if (r) SetFloat(r, HighlightId, 0f);
             highlighted.Clear();
+            foreach (GameObject o in outlines) if (o) Destroy(o);
+            outlines.Clear();
             if (!focus)
             {
                 rig.SetFocus(null);
@@ -445,11 +513,30 @@ namespace Portfolio
                 if (r is ParticleSystemRenderer) continue;
                 SetFloat(r, HighlightId, 1f);
                 highlighted.Add(r);
+                AddOutline(r);
                 if (any) bounds.Encapsulate(r.bounds);
                 else bounds = r.bounds;
                 any = true;
             }
             rig.SetFocus(bounds.center);
+        }
+
+        /// <summary>Contour lumineux : copie du maillage, attachée à l'objet (elle suit ses animations).</summary>
+        void AddOutline(Renderer r)
+        {
+            if (!outline || !(r is MeshRenderer) || !r.sharedMaterial || r.sharedMaterial.shader.name != "Portfolio/BrickPlastic") return;
+            MeshFilter filter = r.GetComponent<MeshFilter>();
+            if (!filter || !filter.sharedMesh) return;
+            var go = new GameObject("Contour");
+            go.transform.SetParent(r.transform, false);
+            go.AddComponent<MeshFilter>().sharedMesh = filter.sharedMesh;
+            MeshRenderer copy = go.AddComponent<MeshRenderer>();
+            var slots = new Material[filter.sharedMesh.subMeshCount];
+            for (int i = 0; i < slots.Length; i++) slots[i] = outline;
+            copy.sharedMaterials = slots;
+            copy.shadowCastingMode = ShadowCastingMode.Off;
+            copy.receiveShadows = false;
+            outlines.Add(go);
         }
 
         void SetFloat(Renderer r, int id, float value)
